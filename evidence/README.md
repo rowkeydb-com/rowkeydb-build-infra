@@ -1,0 +1,73 @@
+# Evidence tools
+
+These tools show whether a change leaves a consumer's build as intended.
+They compare the BuildBuddy invocations of a consumer's CI jobs on two
+branches: one before the change and one after it. They showed that
+rowkeydb's adoption of this repository left its build unchanged, and each
+later change is shown with them again.
+
+They need curl, jq, zstd, protoc and Python 3 with the protobuf package;
+they were last run with protoc 3.21.12 and protobuf 6.33.5. They also need a
+BuildBuddy API key, read from `~/.config/buildbuddy/api-key` unless
+`BUILDBUDDY_API_KEY_FILE` names another file.
+
+- `fetch.sh` downloads each invocation's record and its compact execution
+  log.
+- `options.py` compares the canonical command lines of the two sets. It
+  prints how many invocations have identical options and groups the
+  invocations that can be paired.
+- `decode.py` turns an execution log into one JSON line per action. Each
+  line holds the action's arguments, environment, platform, fully
+  expanded inputs and outputs, but not its timing.
+- `compare.py` compares two decoded logs by action digest and by content.
+  For each action that differs, it names the fields that differ.
+- `rcexpand.py` expands two rc files as Bazel's client does. It then
+  compares every option of every configuration in them, including the
+  configurations no CI job runs.
+- `spawn.proto` is Bazel 7.6.1's `src/main/protobuf/spawn.proto`, copied
+  unchanged (SHA-256
+  `381bcb109e2855d4055fdc75988cc2144e0a92aa8586298123bb662cdefa6afe`).
+  It must match the Bazel version in `.bazelversion`. When that version
+  changes, replace it with the new version's file.
+
+## Procedure
+
+1. Create two branches of the consumer: `before` and `after`. Both run
+   the same CI jobs, and the jobs pass `--execution_log_compact_file`.
+   The shared options' `buildbuddy` configuration sets it, and BuildBuddy
+   keeps the log with the invocation. Put a tag on each branch's commit,
+   so that the commits remain after the branches are deleted.
+2. Fetch both sides into one directory:
+   `evidence/fetch.sh <dir> before- <invocation id>...` and
+   `evidence/fetch.sh <dir> after- <invocation id>...`.
+3. Compare the options: `python3 -I evidence/options.py <dir>`. Add
+   `--ignore <option>` for each option the change sets on purpose.
+4. Compile the descriptor:
+
+   ```
+   protoc --include_imports --descriptor_set_out=spawn.desc \
+       -I evidence evidence/spawn.proto
+   ```
+
+5. Decode each log:
+
+   ```
+   zstd -dc <dir>/<side>-<id>.zst |
+       python3 -I evidence/decode.py spawn.desc > <side>-<id>.jsonl
+   ```
+
+6. Compare each pair that `options.py` grouped:
+   `python3 -I evidence/compare.py before-<id>.jsonl after-<id>.jsonl`.
+7. Compare the configurations no CI job runs:
+
+   ```
+   python3 -I evidence/rcexpand.py <before .bazelrc> <after .bazelrc> \
+       <after checkout>
+   ```
+
+   The last argument resolves `%workspace%` in an `import`.
+
+A pair whose actions are identical builds the same outputs from the same
+inputs. A pair that differs needs an account of each difference.
+RowKeyDB's `design/shared_build_architecture.md` gives one for each of the
+three that rowkeydb's adoption showed.

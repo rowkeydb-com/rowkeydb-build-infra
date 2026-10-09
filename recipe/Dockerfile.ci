@@ -1,0 +1,167 @@
+# Docker image for CI builds and static analysis
+FROM ubuntu:24.04 AS base
+ARG BUILD_CPUS
+
+# Avoid prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install base dependencies
+# protobuf-compiler required for google-protobuf dependency
+# autoconf, automake, libtool required for building dependencies
+# lcov required for code coverage reports
+RUN apt-get update && apt-get install -y \
+    autoconf \
+    automake \
+    build-essential \
+    ca-certificates \
+    curl \
+    git \
+    gnupg \
+    lcov \
+    gcc-14 \
+    g++-14 \
+    libtool \
+    lsb-release \
+    maven \
+    default-jdk \
+    pkg-config \
+    protobuf-compiler \
+    python3 \
+    shellcheck \
+    wget \
+    xz-utils \
+    zip \
+    unzip \
+    zstd \
+    cmake \
+    ninja-build \
+    && rm -rf /var/lib/apt/lists/* \
+    && update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100 \
+    && update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 100
+
+# Pre-cache Maven dependencies for HBase conformance tests
+# WARNING: Keep java-bigtable-hbase version (v2.18.3) synchronized with MODULE.bazel
+RUN wget -q https://github.com/googleapis/java-bigtable-hbase/archive/refs/tags/v2.18.3.tar.gz \
+    && tar -xzf v2.18.3.tar.gz \
+    && cd java-bigtable-hbase-2.18.3 \
+    && mvn -B install -PemulatorTestsH2 -DskipTests -Dmaven.repo.local=/opt/maven_cache \
+    && cd .. \
+    && rm -rf java-bigtable-hbase-2.18.3 v2.18.3.tar.gz \
+    && chmod -R a+rX /opt/maven_cache
+
+# Install clang-tidy-21 and clang-format-21 from the LLVM apt repo.
+# The project's .clang-tidy disables checks (modernize-use-std-format,
+# portability-template-virtual-member-function) that only exist in
+# clang-tidy 21+. Ubuntu 24.04's clang-tidy-18 rejects unknown check
+# names, breaking the Bazel clang-tidy integration.
+#
+# We keep clang at version 18 (from Ubuntu) for compilation because
+# clang-21 has a known ASan incompatibility with protobuf's LimitToken
+# (ASAN_POISON_MEMORY_REGION + use-after-scope).
+RUN wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
+        | gpg --dearmor -o /usr/share/keyrings/llvm-archive-keyring.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/llvm-archive-keyring.gpg] http://apt.llvm.org/noble/ llvm-toolchain-noble-21 main" \
+        > /etc/apt/sources.list.d/llvm-21.list \
+    && echo "deb [signed-by=/usr/share/keyrings/llvm-archive-keyring.gpg] http://apt.llvm.org/noble/ llvm-toolchain-noble-19 main" \
+        > /etc/apt/sources.list.d/llvm-19.list \
+    && apt-get update \
+    && apt-get install -y clang-tidy-21 clang-format-21 clang-19 libclang-19-dev llvm-19-dev libc++-19-dev libc++abi-19-dev \
+    && rm -rf /var/lib/apt/lists/* \
+    && ln -sf /usr/bin/clang-tidy-21 /usr/bin/clang-tidy \
+    && ln -sf /usr/bin/clang-format-21 /usr/bin/clang-format \
+    && ln -sf /usr/bin/clang-19 /usr/bin/clang \
+    && ln -sf /usr/bin/clang++-19 /usr/bin/clang++
+
+# Install Bazel
+RUN wget -q https://github.com/bazelbuild/bazelisk/releases/download/v1.19.0/bazelisk-linux-amd64 \
+    && chmod +x bazelisk-linux-amd64 \
+    && mv bazelisk-linux-amd64 /usr/local/bin/bazel
+
+# Install typos
+RUN wget -q https://github.com/crate-ci/typos/releases/download/v1.16.26/typos-v1.16.26-x86_64-unknown-linux-musl.tar.gz \
+    && tar -xzf typos-v1.16.26-x86_64-unknown-linux-musl.tar.gz \
+    && mv typos /usr/local/bin/ \
+    && rm typos-v1.16.26-x86_64-unknown-linux-musl.tar.gz
+
+# Set working directory
+WORKDIR /workspace
+
+# Install Go
+RUN wget -q https://go.dev/dl/go1.25.14.linux-amd64.tar.gz \
+    && tar -C /usr/local -xzf go1.25.14.linux-amd64.tar.gz \
+    && rm go1.25.14.linux-amd64.tar.gz
+ENV PATH="/usr/local/go/bin:${PATH}"
+# Install cbt via google-cloud-cli
+RUN wget -q https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-linux-x86_64.tar.gz \
+    && tar -C /usr/local -xzf google-cloud-cli-linux-x86_64.tar.gz \
+    && /usr/local/google-cloud-sdk/install.sh -q \
+    && /usr/local/google-cloud-sdk/bin/gcloud components install cbt -q \
+    && ln -s /usr/local/google-cloud-sdk/bin/cbt /usr/local/bin/cbt \
+    && rm google-cloud-cli-linux-x86_64.tar.gz
+
+# Install Terraform
+RUN wget -q https://releases.hashicorp.com/terraform/1.7.5/terraform_1.7.5_linux_amd64.zip \
+    && unzip terraform_1.7.5_linux_amd64.zip \
+    && mv terraform /usr/local/bin/ \
+    && rm terraform_1.7.5_linux_amd64.zip
+
+# Install TFLint
+RUN wget -q https://github.com/terraform-linters/tflint/releases/latest/download/tflint_linux_amd64.zip \
+    && unzip tflint_linux_amd64.zip \
+    && mv tflint /usr/local/bin/ \
+    && rm tflint_linux_amd64.zip
+
+# Install Trivy
+RUN wget -q https://github.com/aquasecurity/trivy/releases/download/v0.74.0/trivy_0.74.0_Linux-64bit.tar.gz \
+    && tar -xzf trivy_0.74.0_Linux-64bit.tar.gz trivy \
+    && mv trivy /usr/local/bin/ \
+    && rm trivy_0.74.0_Linux-64bit.tar.gz
+
+# Install golangci-lint
+RUN /usr/local/go/bin/go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8 \
+    && mv /root/go/bin/golangci-lint /usr/local/bin/
+
+# Install ansible and yamllint in a virtualenv
+RUN apt-get update && apt-get install -y python3-venv \
+    && python3 -m venv /opt/ansible-env \
+    && /opt/ansible-env/bin/pip install yamllint ansible-core==2.16.* ansible-lint==24.* ruff==0.7.* pytest==8.* pyyaml==6.* \
+    && ln -sf /opt/ansible-env/bin/yamllint /usr/local/bin/yamllint \
+    && ln -sf /opt/ansible-env/bin/ansible /usr/local/bin/ansible \
+    && ln -sf /opt/ansible-env/bin/ansible-galaxy /usr/local/bin/ansible-galaxy \
+    && ln -sf /opt/ansible-env/bin/ansible-lint /usr/local/bin/ansible-lint \
+    && ln -sf /opt/ansible-env/bin/ruff /usr/local/bin/ruff \
+    && ln -sf /opt/ansible-env/bin/pytest /usr/local/bin/pytest \
+    && rm -rf /var/lib/apt/lists/*
+
+# Verify installations
+ENV BAZELISK_HOME=/opt/bazelisk
+COPY .bazelversion /workspace/.bazelversion
+RUN bazel version && chmod -R a+rwX /opt/bazelisk && clang --version && clang-format --version && shellcheck --version && typos --version && go version && terraform --version && tflint --version && trivy --version && golangci-lint --version && pytest --version
+
+# ---------------------------------------------------------
+# MSAN Stage: Inherits from base, adds compiled libc++
+# ---------------------------------------------------------
+FROM base AS msan
+ARG BUILD_CPUS
+
+# Build and install MSan-instrumented libc++
+RUN wget -q https://github.com/llvm/llvm-project/releases/download/llvmorg-19.1.0/llvm-project-19.1.0.src.tar.xz \
+    && tar -xf llvm-project-19.1.0.src.tar.xz \
+    && cd llvm-project-19.1.0.src/runtimes \
+    && cmake -B build \
+        -G Ninja \
+        -DCMAKE_C_COMPILER=clang-19 \
+        -DCMAKE_CXX_COMPILER=clang++-19 \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DLLVM_USE_SANITIZER=MemoryWithOrigins \
+        -DLLVM_ENABLE_RUNTIMES="libcxx;libcxxabi;libunwind" \
+        -DLIBCXX_ENABLE_SHARED=OFF \
+        -DLIBCXXABI_ENABLE_SHARED=OFF \
+        -DLIBUNWIND_ENABLE_SHARED=OFF \
+        -DLIBCXX_ENABLE_EXPERIMENTAL_LIBRARY=ON \
+        -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+    && ninja -j ${BUILD_CPUS:-8} -C build cxx cxx_experimental cxxabi unwind \
+    && mkdir -p /usr/lib/llvm-19/lib/msan \
+    && cp build/lib/libc++.a build/lib/libc++abi.a build/lib/libunwind.a build/lib/libc++experimental.a /usr/lib/llvm-19/lib/msan/ \
+    && cd ../.. \
+    && rm -rf llvm-project-19.1.0.src llvm-project-19.1.0.src.tar.xz

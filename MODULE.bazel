@@ -1,0 +1,33 @@
+# Copyright 2026 Chanzo
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""The shared build infrastructure of RowKeyDB, RowKeyRaft, Limen and
+zetasketch-cpp: the image every build runs in, the approved versions of the
+shared modules, and the shared build options."""
+
+module(
+    name = "rowkeydb_build_infra",
+    version = "0.1.0",
+    compatibility_level = 1,
+)
+
+# The approved versions of the four shared modules. Each is a "nodep"
+# dependency (repo_name = None): it takes effect only in a graph which
+# already contains the module by another path, where it is a lower bound,
+# and adds the module nowhere else. Every consumer declares the same
+# versions; scripts/check.sh compares them.
+bazel_dep(name = "abseil-cpp", version = "20250814.1", repo_name = None)
+bazel_dep(name = "protobuf", version = "33.5", repo_name = None)
+bazel_dep(name = "grpc", version = "1.81.1", repo_name = None)
+bazel_dep(name = "opentelemetry-cpp", version = "1.24.0.bcr.1", repo_name = None)
