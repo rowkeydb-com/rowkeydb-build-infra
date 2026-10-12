@@ -16,14 +16,14 @@
 
 Reads the records fetch.sh wrote in a directory, before-<id>.json and
 after-<id>.json, and takes from each the canonical command line Bazel
-reports: the command, its targets and every option with its values in
-order. Options which describe the run rather than the build (the build
-metadata, the client's environment, the rc files read and the start time)
-are left out, as are the options named with --ignore. It prints how many
-invocations on each side have identical options, each invocation with no
-counterpart, and, for each set of identical options, the invocations on
-each side, which compare.py then compares pair by pair. It also prints
-the rc files each side read.
+reports: the command, its targets, and every startup and command option
+with its values in order. Options which describe the run rather than the
+build (the build metadata, the client's environment, the rc files read
+and the start time) are left out, as are the options named with --ignore.
+It prints how many invocations on each side have identical options, each
+invocation with no counterpart, and, for each set of identical options,
+the invocations on each side, which compare.py then compares pair by pair.
+It also prints the rc files each side read.
 
 Usage: python3 -I options.py <directory> [--ignore <option name>]...
 """
@@ -49,6 +49,10 @@ def load(path, ignored):
                 command = " ".join(section["chunkList"]["chunk"])
             elif label == "residual":
                 targets = tuple(section.get("chunkList", {}).get("chunk", []))
+            elif label == "startup options":
+                for option in section.get("optionList", {}).get("option", []):
+                    options.append(("startup " + option.get("optionName", ""),
+                                    option.get("optionValue", "")))
             elif label == "command options":
                 for option in section.get("optionList", {}).get("option", []):
                     name = option.get("optionName", "")

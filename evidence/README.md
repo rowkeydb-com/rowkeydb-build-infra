@@ -13,14 +13,22 @@ BuildBuddy API key, read from `~/.config/buildbuddy/api-key` unless
 
 - `fetch.sh` downloads each invocation's record and its compact execution
   log.
-- `options.py` compares the canonical command lines of the two sets. It
-  prints how many invocations have identical options and groups the
-  invocations that can be paired.
+- `options.py` compares the canonical command lines of the two sets,
+  startup options included. It prints how many invocations have
+  identical options and groups the invocations that can be paired.
 - `decode.py` turns an execution log into one JSON line per action. Each
   line holds the action's arguments, environment, platform, fully
-  expanded inputs and outputs, but not its timing.
+  expanded inputs and outputs, but not its timing. A spawn's line also
+  gives its runner, whether it was a cache hit, and the digest of each
+  output, which describe the run, not the action.
 - `compare.py` compares two decoded logs by action digest and by content.
-  For each action that differs, it names the fields that differ.
+  For each action that differs, it names the fields that differ. For each
+  side, it also counts the cacheable actions that were not found in the
+  cache, how many of them the other side found in the cache under the same
+  action digest, and how many of those produced the same outputs. When the
+  other side ran first, such an action had been evicted from the cache in
+  between, its key unchanged; when this side ran first, it is the action
+  whose result the other side then found.
 - `rcexpand.py` expands two rc files as Bazel's client does. It then
   compares every option of every configuration in them, including the
   configurations no CI job runs.
@@ -39,7 +47,9 @@ BuildBuddy API key, read from `~/.config/buildbuddy/api-key` unless
    so that the commits remain after the branches are deleted.
 2. Fetch both sides into one directory:
    `evidence/fetch.sh <dir> before- <invocation id>...` and
-   `evidence/fetch.sh <dir> after- <invocation id>...`.
+   `evidence/fetch.sh <dir> after- <invocation id>...`. Keep that
+   directory on disk with the record: BuildBuddy's cache evicts the
+   execution logs in time.
 3. Compare the options: `python3 -I evidence/options.py <dir>`. Add
    `--ignore <option>` for each option the change sets on purpose.
 4. Compile the descriptor:
@@ -62,10 +72,12 @@ BuildBuddy API key, read from `~/.config/buildbuddy/api-key` unless
 
    ```
    python3 -I evidence/rcexpand.py <before .bazelrc> <after .bazelrc> \
-       <after checkout>
+       <before checkout> <after checkout>
    ```
 
-   The last argument resolves `%workspace%` in an `import`.
+   Each checkout resolves `%workspace%` in its own side's imports, so that
+   a change of an imported file, such as the copy of the shared options,
+   is compared.
 
 A pair whose actions are identical builds the same outputs from the same
 inputs. A pair that differs needs an account of each difference.

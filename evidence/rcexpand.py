@@ -24,11 +24,12 @@ order, recursively; `--enable_platform_specific_config` is followed, at its
 position, by the expansion of the platform's configuration (linux); the
 command line's `--config` options follow the rc options.
 
-Usage: python3 -I rcexpand.py before.bazelrc after.bazelrc <workspace>
-(the workspace directory resolves %workspace% in an import).
+Usage: python3 -I rcexpand.py before.bazelrc after.bazelrc
+    <before workspace> [<after workspace>]
+Each workspace directory resolves %workspace% in its side's imports; the
+after side uses the before side's when none is given.
 """
 import collections
-import itertools
 import shlex
 import sys
 
@@ -99,7 +100,7 @@ def options(lines, command, configs):
 
 
 before = read(sys.argv[1], sys.argv[3])
-after = read(sys.argv[2], sys.argv[3])
+after = read(sys.argv[2], sys.argv[4] if len(sys.argv) > 4 else sys.argv[3])
 names = sorted({k for _, k, _ in before + after if k} - {"linux", "macos",
                                                          "windows"})
 print("configurations in the files:", " ".join(names))

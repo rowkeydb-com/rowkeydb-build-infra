@@ -32,11 +32,16 @@ jobs:
     steps:
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          # No later step needs the token.
+          persist-credentials: false
       - name: Trust the checkout
         # The checkout belongs to the runner's user and the job runs as root,
         # so git refuses it; actions/checkout trusts it in its own step only.
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: Lint the scripts
-        run: shellcheck scripts/*.sh
+        run: shellcheck scripts/*.sh evidence/*.sh
+      - name: Lint the evidence tools
+        run: ruff check --no-cache evidence/
       - name: Check the references to the image
         run: scripts/check.sh --self

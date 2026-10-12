@@ -15,12 +15,15 @@
 """Decoder of a Bazel 7.6.1 compact execution log.
 
 Reads the zstd-decompressed log on stdin, parses each varint-delimited
-ExecLogEntry with the protobuf runtime from the descriptor set compiled from
-spawn.proto at 7.6.1 (see README.md), and writes one JSON line per spawn and per symlink
-action, with every field that describes the action (not its timing), its
-inputs fully expanded (files, directory contents, unresolved symlinks and
-runfiles trees with their custom symlinks, root symlinks, empty files and
-repo mapping manifest) and its outputs resolved to paths.
+ExecLogEntry with the protobuf runtime from the descriptor set compiled
+from spawn.proto at 7.6.1 (see README.md), and writes one JSON line per
+spawn and per symlink action, with every field that describes the action
+(not its timing), its inputs fully expanded (files, directory contents,
+unresolved symlinks and runfiles trees with their custom symlinks, root
+symlinks, empty files and repo mapping manifest) and its outputs resolved
+to paths. Each spawn's line also gives its runner, whether it was a cache
+hit, and each output's path with its digest, which describe the run and
+are left out of its content hash.
 
 Usage: zstd -dc log.zst | python3 -I decode.py spawn.desc > spawns.jsonl
 """
@@ -118,10 +121,12 @@ while pos < len(data):
         entries[e.id] = e
     if kind == "spawn":
         s = e.spawn
-        outputs = []
+        outputs, output_digests = [], []
         for o in s.outputs:
             if o.WhichOneof("type") == "output_id":
-                outputs.extend(p for p, _, _ in resolve_input(o.output_id, set()))
+                for p, _, d in resolve_input(o.output_id, set()):
+                    outputs.append(p)
+                    output_digests.append([p, d])
             else:
                 outputs.append("invalid:" + o.invalid_output_path)
         inputs = sorted(set(expand_set(s.input_set_id, set())))
@@ -146,6 +151,10 @@ while pos < len(data):
         rec["content"] = hashlib.sha256(json.dumps(
             {k: v for k, v in rec.items() if k != "digest"},
             sort_keys=True).encode()).hexdigest()
+        # The run, not the action: added after the content hash.
+        rec["runner"] = s.runner
+        rec["cache_hit"] = s.cache_hit
+        rec["output_digests"] = sorted(output_digests)
         out.append(rec)
     elif kind == "symlink_action":
         a = e.symlink_action

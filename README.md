@@ -33,10 +33,14 @@ It holds:
 Every reference a consumer makes to this repository names a commit or a
 digest, so that any past commit of a consumer builds as it did. A change
 is one commit here, followed in each consumer by one commit which moves its
-pins and passes `scripts/check.sh`. A consumer names a commit through a
-release, whose asset is that commit's archive. Releases are immutable:
-once a release is published, GitHub refuses to move its tag or to change
-or delete its assets.
+pins and passes `scripts/check.sh`, run from the newest commit of main: the
+script reads the commit a consumer names from the clone it runs in, so it
+checks the consumers of earlier releases as well. A consumer names a
+commit through a release, whose asset is that commit's archive. Releases
+are immutable: once a release is published, GitHub refuses to move its
+tag or to change or delete its assets. GitHub still allows a whole release
+to be deleted, which would stop every past commit that names it from
+building, so this repository's releases are never deleted.
 
 rowkeydb is the first consumer. It adopts this repository without any
 change to its build: the same image, Bazel version, module versions and

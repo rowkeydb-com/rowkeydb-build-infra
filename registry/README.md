@@ -10,8 +10,11 @@ A patched version is named `<upstream version>.rowkey.<n>`, for example
 `1.81.1-rowkey.1`, would mark a pre-release, which sorts below 1.81.1. No
 version number the central registry uses is ever placed here.
 
-A consumer lists the registry at a fixed commit, before the central
-registry, which must then be listed again:
+When a consumer needs it, `bazelrc/shared.bazelrc` lists the registry at a
+fixed commit, before the central registry, which must then be listed
+again, and each consumer takes the two lines through its copy of that
+file; `scripts/check.sh` refuses `--registry` anywhere else in a
+consumer:
 
 ```
 common --registry=<URL of this directory at a commit>

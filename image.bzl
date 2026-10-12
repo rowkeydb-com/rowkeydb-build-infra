@@ -17,8 +17,9 @@
 This is the authoritative copy of the image's digest. Each architecture's
 image is named by its own digest, never by the index which holds them, so
 that adding an architecture changes no other architecture's cache keys.
-The copies of the digest elsewhere (bazelrc/shared.bazelrc and each
-consumer's workflows and scripts) are compared with it by scripts/check.sh.
+The copies of the digest elsewhere (bazelrc/shared.bazelrc, this
+repository's .github/workflows/check.yml, and each consumer's workflows
+and scripts) are compared with it by scripts/check.sh.
 """
 
 IMAGE_REPOSITORY = "ghcr.io/rowkeydb-com/rowkeydb-build-infra"
