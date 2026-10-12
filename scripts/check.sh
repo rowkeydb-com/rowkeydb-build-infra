@@ -266,8 +266,9 @@ check_consumer() {
         fail "$REFERENCES_PATH is missing"
     else
         while IFS= read -r path; do
-            [ -n "$path" ] && [ "${path:0:1}" != "#" ] || continue
-            if [ ! -f "$dir/$path" ]; then
+            if [ -z "$path" ] || [ "${path:0:1}" = "#" ]; then
+                continue
+            elif [ ! -f "$dir/$path" ]; then
                 fail "$path, listed in $REFERENCES_PATH, is missing"
             elif ! grep -a -q -F "$approved" "$dir/$path"; then
                 fail "$path, listed in $REFERENCES_PATH, does not name $approved"
