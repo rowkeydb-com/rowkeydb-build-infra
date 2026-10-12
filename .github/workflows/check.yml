@@ -32,6 +32,10 @@ jobs:
     steps:
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - name: Trust the checkout
+        # The checkout belongs to the runner's user and the job runs as root,
+        # so git refuses it; actions/checkout trusts it in its own step only.
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: Lint the scripts
         run: shellcheck scripts/*.sh
       - name: Check the references to the image
