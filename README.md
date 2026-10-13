@@ -19,6 +19,17 @@ It holds:
 - `recipe/Dockerfile.ci`: the recipe of the image `image.bzl` names. That
   image was built by rowkeydb's workflow, not by this repository, and the
   recipe is kept as the record of what it contains.
+- `recipe/Dockerfile`: the recipe from which that image is rebuilt, with
+  every input pinned, so that two builds give the same image. The inputs
+  no other place is sure to keep, apt.llvm.org's packages and the Maven
+  repository of the HBase tests, are the assets of the release
+  `image-inputs-20261001`, which holds no commit's archive.
+  `recipe/llvm-debs.sha256` and `recipe/requirements.txt` hold the
+  checksums of the packages, and `recipe/files/` the files the recipe
+  copies in.
+- `scripts/build-image.sh`: builds `recipe/Dockerfile` with a pinned
+  builder and no build cache. The workflow `build-image.yml`, started by
+  hand, runs it and pushes the image by digest.
 - `scripts/manifest.sh`: lists an image's configuration, every Debian
   package, every file with its extended attributes and content, and the
   versions of the tools installed outside Debian's packages, so that two
