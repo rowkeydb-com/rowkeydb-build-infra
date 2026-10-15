@@ -24,16 +24,12 @@ and scripts) are compared with it by scripts/check.sh.
 
 IMAGE_REPOSITORY = "ghcr.io/rowkeydb-com/rowkeydb-build-infra"
 
-# The linux/amd64 image of index
-# sha256:9716b9a89c625b3d446872e2c17149d941ecbb41e6f9d152484bb01b0eeb3ef0,
-# which ghcr.io/chanzo-dev/rowkeydb-ci serves for rowkeydb c8807f6b's image
-# tag and for `latest`. rowkeydb's self-hosted runners held, under that
-# image tag, the other build of the same recipe,
-# sha256:4f804cd9db4a8924bfcd27dc4b6b98011e514657041758ecf67f2ed580cf09a1,
-# which differs only in files no build reads (manifests/README.md). The
-# image was copied unchanged, without its attestation, and is tagged
-# v0.1.0. recipe/Dockerfile.ci is its recipe.
-IMAGE_DIGEST_AMD64 = "sha256:a1c8fa1e1a3b49e61cfcd3240e18d4a1288b6375fb95e025c3d31f7f37b0145e"
+# The linux/amd64 image which scripts/build-image.sh builds from
+# recipe/Dockerfile, tagged v0.2.0. Builds without any build cache, on
+# different machines and on different days, gave this digest. Its manifest
+# differs from that of the image of the earlier releases, tagged v0.1.0,
+# only as manifests/README.md states.
+IMAGE_DIGEST_AMD64 = "sha256:07ce31e8be9d63aadccae2a36dfcbb30c2250ef8e7279366e661536f0b14cd3e"
 
 # The value of the `container-image` execution property.
 IMAGE_AMD64 = "docker://" + IMAGE_REPOSITORY + "@" + IMAGE_DIGEST_AMD64

@@ -16,10 +16,7 @@ It holds:
   checked copy and imports it.
 - `registry/`: a Bazel registry for patched versions of the shared
   modules, empty until one is needed.
-- `recipe/Dockerfile.ci`: the recipe of the image `image.bzl` names. That
-  image was built by rowkeydb's workflow, not by this repository, and the
-  recipe is kept as the record of what it contains.
-- `recipe/Dockerfile`: the recipe from which that image is rebuilt, with
+- `recipe/Dockerfile`: the recipe of the image `image.bzl` names, with
   every input pinned, so that two builds give the same image. The inputs
   no other place is sure to keep, apt.llvm.org's packages and the Maven
   repository of the HBase tests, are the assets of the release
@@ -27,6 +24,10 @@ It holds:
   `recipe/llvm-debs.sha256` and `recipe/requirements.txt` hold the
   checksums of the packages, and `recipe/files/` the files the recipe
   copies in.
+- `recipe/Dockerfile.ci`: the recipe of the image the releases `v0.1.0`
+  and `v0.1.1` name. That image was built by rowkeydb's workflow, not by
+  this repository, and the recipe is kept as the record of what it
+  contains.
 - `scripts/build-image.sh`: builds `recipe/Dockerfile` with a pinned
   builder and no build cache. The workflow `build-image.yml`, started by
   hand, runs it and pushes the image by digest.
@@ -53,14 +54,17 @@ tag or to change or delete its assets. GitHub still allows a whole release
 to be deleted, which would stop every past commit that names it from
 building, so this repository's releases are never deleted.
 
-rowkeydb is the first consumer. It adopts this repository without any
+rowkeydb is the first consumer. It adopted this repository without any
 change to its build: the same image, Bazel version, module versions and
-build options. The image is the linux/amd64 image of
-`ghcr.io/chanzo-dev/rowkeydb-ci` that `image.bzl` names, copied unchanged
-and tagged `v0.1.0`; consumers name it by digest, never by tag. Next, the
-image is rebuilt from a recipe that reproduces it, and then the other
-three repositories are brought in. RowKeyDB's
-`design/shared_build_architecture.md` describes each step and the evidence
-it requires.
+build options. The image of the releases `v0.1.0` and `v0.1.1` is the
+linux/amd64 image of `ghcr.io/chanzo-dev/rowkeydb-ci`, copied unchanged
+and tagged `v0.1.0`. From `v0.2.0` on, the image is built from
+`recipe/Dockerfile`; the manifest of the image of `v0.2.0` equals the
+earlier image's apart from the differences `manifests/README.md` lists.
+Each image is tagged with the name of the release that first names it;
+consumers name it by digest, never by tag. Next, rowkeydb moves to the
+image of `v0.2.0`; the other three repositories are brought in later.
+RowKeyDB's `design/shared_build_architecture.md` describes each step and
+the evidence it requires.
 
 Licensed under the Apache License, Version 2.0; see `LICENSE`.
