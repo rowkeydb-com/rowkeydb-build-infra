@@ -28,7 +28,18 @@ BuildBuddy API key, read from `~/.config/buildbuddy/api-key` unless
   action digest, and how many of those produced the same outputs. When the
   other side ran first, such an action had been evicted from the cache in
   between, its key unchanged; when this side ran first, it is the action
-  whose result the other side then found.
+  whose result the other side then found. Last, it pairs the spawns of the
+  two sides by content and compares the digests of their outputs, counting
+  each set of outputs as often as it occurs. Three options serve a change
+  of image, which changes every action digest, and each reports what it
+  affected. `--strip-property` removes a platform property from the
+  content and prints, for each side, every value the property had.
+  `--varying` names, by a regular expression which must match the whole
+  path, files which differ from run to run; their digests are left out of
+  the comparison of outputs and, where they are inputs, out of the
+  content, and the paths each expression matched are printed.
+  `--test-duration` leaves out the test's duration from the arguments of
+  the spawn which writes `test.xml`.
 - `rcexpand.py` expands two rc files as Bazel's client does. It then
   compares every option of every configuration in them, including the
   configurations no CI job runs.
@@ -83,3 +94,32 @@ A pair whose actions are identical builds the same outputs from the same
 inputs. A pair that differs needs an account of each difference.
 RowKeyDB's `design/shared_build_architecture.md` gives one for each of the
 three that rowkeydb's adoption showed.
+
+When the image changes, both branches run every action: each adds
+`build --noremote_accept_cached` to its `.bazelrc`, so that each action
+runs in its own branch's image. The procedure then differs as follows.
+
+- The branch tags must not begin with `v`, which rowkeydb's release
+  workflow takes for a release.
+- The before branch's jobs are run twice, one run after the other. The
+  second run is fetched into a directory of its own, under the prefix
+  `after-`, since `options.py` reads only the prefixes `before-` and
+  `after-`. The two runs are compared with `--test-duration` and a
+  `--varying` expression for each file the design names in advance: each
+  test's `test.log` and `test.xml`, and coverage's `lcov_files.tmp`.
+  Every spawn must be paired by content; every path whose digest differs
+  within a pair is a further file which varies from run to run, and is
+  added to the expressions given to `--varying`. The comparison is
+  repeated with each expression added until every spawn is paired and no
+  pair's outputs differ, since a varying file may also be the input of a
+  later spawn. An expression must
+  match the whole path, so a literal path has its special characters,
+  such as `.`, escaped.
+- The options are compared with `--ignore remote_default_exec_properties`
+  as well, since that option names the image; the lock files are still
+  compared.
+- Each pair is compared with `--strip-property container-image`,
+  `--test-duration` and those `--varying` expressions. The pair is equal
+  when no spawn was a cache hit, every spawn and every symlink action is
+  paired by content, each side names only its own image, and no pair's
+  outputs differ.
