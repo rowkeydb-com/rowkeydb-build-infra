@@ -39,7 +39,15 @@ BuildBuddy API key, read from `~/.config/buildbuddy/api-key` unless
   the comparison of outputs and, where they are inputs, out of the
   content, and the paths each expression matched are printed.
   `--test-duration` leaves out the test's duration from the arguments of
-  the spawn which writes `test.xml`.
+  the spawn which writes `test.xml`. A fourth, `--rename`, replaces a
+  part of each path, for files whose names differ from run to run, and
+  prints every path it changed.
+- `find.py` prints the digest and size of each file in an execution log
+  whose path matches a regular expression, and `fetch_blob.sh` downloads
+  such a file from BuildBuddy's cache and checks its digest.
+- `lcov_shape.py` prints an lcov coverage report without its counts:
+  each source file and the set of lines, functions and branches listed
+  for it.
 - `rcexpand.py` expands two rc files as Bazel's client does. It then
   compares every option of every configuration in them, including the
   configurations no CI job runs.
@@ -106,7 +114,12 @@ runs in its own branch's image. The procedure then differs as follows.
   `after-`, since `options.py` reads only the prefixes `before-` and
   `after-`. The two runs are compared with `--test-duration` and a
   `--varying` expression for each file the design names in advance: each
-  test's `test.log` and `test.xml`, and coverage's `lcov_files.tmp`.
+  test's `test.log` and `test.xml`; and, from coverage, `lcov_files.tmp`,
+  the counters each test writes (the `.gcda` files, Go's
+  `go_coverage.<number>.dat` files and each test's `coverage.dat`) and the
+  merged report, `_coverage_report.dat`. The random number in the name of
+  Go's files is replaced with `--rename`, so that the spawns which write
+  and read them pair.
   Every spawn must be paired by content; every path whose digest differs
   within a pair is a further file which varies from run to run, and is
   added to the expressions given to `--varying`. The comparison is
@@ -119,7 +132,19 @@ runs in its own branch's image. The procedure then differs as follows.
   as well, since that option names the image; the lock files are still
   compared.
 - Each pair is compared with `--strip-property container-image`,
-  `--test-duration` and those `--varying` expressions. The pair is equal
-  when no spawn was a cache hit, every spawn and every symlink action is
-  paired by content, each side names only its own image, and no pair's
-  outputs differ.
+  `--test-duration`, that `--rename` and those `--varying` expressions.
+  The pair is equal when no spawn was a cache hit, every spawn and every
+  symlink action is paired by content, each side names only its own image,
+  and no pair's outputs differ.
+- The merged coverage reports vary in their counts, so their shapes are
+  compared instead, and must be equal. For each side's coverage
+  invocation:
+
+  ```
+  zstd -dc <dir>/<side>-<id>.zst | python3 -I evidence/find.py \
+      spawn.desc 'bazel-out/_coverage/_coverage_report\.dat'
+  evidence/fetch_blob.sh <side>-report.dat <id> <digest> <size>
+  python3 -I evidence/lcov_shape.py <side>-report.dat > <side>-shape.txt
+  ```
+
+  and then `diff before-shape.txt after-shape.txt`.

@@ -31,7 +31,7 @@ one side with that on the other. It prints every path whose digest differs
 within a pair, and the number of such pairs.
 
 When the image changes, every action digest changes with the platform's
-container-image property, and the comparison of content needs three
+container-image property, and the comparison of content needs four
 options. With any of them it also prints, for each side, the number of
 cache hits and the runners of the spawns, describes the spawns found after
 only as it does those found before only, names each spawn whose content
@@ -48,6 +48,12 @@ occurs more often on one side, and reports what each option affected:
   prints every path it matched, as an output or as an input or tool, and
   the number of inputs and tools it blanked, by the mnemonic of their
   spawn.
+--rename REGEX REPLACEMENT replaces, in the path of every output, input
+  and tool, each match of REGEX with REPLACEMENT, for files whose names
+  differ from run to run, such as Go's coverage files, which carry a
+  random number. It is applied before the other options, which see the
+  new paths. For each side and expression it prints every path it
+  changed, with the new path.
 --test-duration leaves out of the content the argument, all digits, in
   which the spawn that writes a test's test.xml records the test's
   duration, and prints for each side the target of every spawn it applied
@@ -56,7 +62,8 @@ occurs more often on one side, and reports what each option affected:
 Each option but --test-duration may be given more than once.
 
 Usage: python3 -I compare.py [--strip-property NAME]... [--varying REGEX]...
-           [--test-duration] before.jsonl after.jsonl
+           [--rename REGEX REPLACEMENT]... [--test-duration]
+           before.jsonl after.jsonl
 """
 import argparse
 import collections
@@ -79,10 +86,14 @@ parser.add_argument("--strip-property", action="append", default=[],
                     metavar="NAME")
 parser.add_argument("--varying", action="append", default=[],
                     metavar="REGEX")
+parser.add_argument("--rename", action="append", default=[], nargs=2,
+                    metavar=("REGEX", "REPLACEMENT"))
 parser.add_argument("--test-duration", action="store_true")
 args = parser.parse_args()
 varying = [re.compile(v) for v in args.varying]
-normalising = bool(args.strip_property or varying or args.test_duration)
+renames = [(re.compile(x), y) for x, y in args.rename]
+normalising = bool(args.strip_property or varying or renames
+                   or args.test_duration)
 
 
 def load(path):
@@ -106,7 +117,25 @@ class Report:
         self.outputs = collections.defaultdict(set)
         self.inputs = collections.defaultdict(set)
         self.blanked = collections.defaultdict(collections.Counter)
+        self.renamed = collections.defaultdict(set)
         self.durations = []
+
+
+def rename(r, report):
+    """Applies the --rename expressions to the paths of the spawn's
+    outputs, inputs and tools, in place."""
+    def new(p):
+        q = p
+        for x, y in renames:
+            s = x.sub(y, q)
+            if s != q:
+                report.renamed[x.pattern].add((p, s))
+            q = s
+        return q
+    r["outputs"] = [new(p) for p in r["outputs"]]
+    r["output_digests"] = sorted([new(p), d] for p, d in r["output_digests"])
+    for field in ("inputs", "tools"):
+        r[field] = sorted([new(p), k, d] for p, k, d in r[field])
 
 
 def normalise(r, report):
@@ -161,6 +190,11 @@ def print_report(side, rs, report):
             print(f"    output {p}")
         for p in ins:
             print(f"    input {p}")
+    for x, _ in renames:
+        changed = sorted(report.renamed[x.pattern])
+        print(f"  {side}: --rename {x.pattern!r} changed {len(changed)} paths")
+        for p, s in changed:
+            print(f"    renamed {p} -> {s}")
     if args.test_duration:
         print(f"  {side}: test durations left out of "
               f"{len(report.durations)} spawns")
@@ -233,6 +267,8 @@ for kind in ("spawn", "symlink"):
         reports = {"before": Report(), "after": Report()}
         for side, rs in (("before", ra), ("after", rb)):
             for r in rs:
+                if renames:
+                    rename(r, reports[side])
                 normalise(r, reports[side])
     ca = collections.Counter(r["key"] for r in ra)
     cb = collections.Counter(r["key"] for r in rb)
