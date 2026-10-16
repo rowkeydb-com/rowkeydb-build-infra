@@ -68,10 +68,13 @@ build:linux --host_cxxopt=-std=c++2b
 # RocksDB's crc32c needs for its carry-less-multiply path; and the
 # OpenTelemetry C++ SDK's exemplar API, which its preview gate hides. A
 # repository applies its own options to its own code only, with
-# `--per_file_copt=.*,-external/.*,-@@[^/]@...`: Bazel matches each
-# expression against a file's path and against its label, whose canonical
-# form begins with `@@` followed by the repository's name, empty for the
-# repository's own code.
+# `--per_file_copt=.*,-external/.*,-^[^/]{3,}//@...`. Bazel splits the
+# option at its first `@`, so an expression cannot name the `@@` which
+# begins a label's canonical form. It matches each expression against a
+# file's path and against its label; a dependency's label has its
+# repository's name, at least one character, between `@@` and `//`, where
+# the repository's own has none, so the second exclusion leaves out a
+# dependency's files by their labels, the first by their paths.
 build --per_file_copt=external/.*@-g,-fno-omit-frame-pointer
 build:linux --per_file_copt=external/.*@-march=x86-64-v3,-mpclmul
 build --per_file_copt=external/.*@-DENABLE_METRICS_EXEMPLAR_PREVIEW
