@@ -15,9 +15,13 @@ repository's releases and compressed with zstd, as `manifest-*.txt.zst`.
 manifest is named by the first eight hexadecimal digits of the digest of
 the linux/amd64 image it describes.
 
-- `manifest-07ce31e8.txt` describes the image `image.bzl` names,
+- `manifest-a612ddba.txt` describes the image `image.bzl` names,
+  `sha256:a612ddbaafe981453ff6ea9a2fee8906462be071b4f6369279d28b7f64fdfc15`,
+  which `scripts/build-image.sh` builds from `recipe/Dockerfile` at
+  d815082, for the release `v0.3.0`.
+- `manifest-07ce31e8.txt` describes the image of `v0.2.0`,
   `sha256:07ce31e8be9d63aadccae2a36dfcbb30c2250ef8e7279366e661536f0b14cd3e`,
-  which `scripts/build-image.sh` builds from `recipe/Dockerfile`.
+  which `scripts/build-image.sh` builds from `recipe/Dockerfile` at 0e4332f.
 - `manifest-a1c8fa1e.txt` describes the image the releases `v0.1.0` and
   `v0.1.1` name,
   `sha256:a1c8fa1e1a3b49e61cfcd3240e18d4a1288b6375fb95e025c3d31f7f37b0145e`,
@@ -88,3 +92,20 @@ lists as the rebuild's intended changes, and in nothing else:
 
 The files under `/opt/maven_cache` keep their contents and modes; only
 their times, which a manifest does not list, are 1970-01-01.
+
+The manifest of the image `a612ddba` differs from that of `07ce31e8` in
+the following, which RowKeyDB's `design/shared_build_architecture.md`
+lists as the later changes made in the image, and in nothing else: the
+configuration, the Debian packages and the extended attributes are the
+same.
+
+- The MSan builds of libc++, libc++abi, libc++experimental and libunwind
+  (`/usr/lib/llvm-19/lib/msan/*.a`) are built from the LLVM 19.1.7
+  sources, the release of the clang 19 and libc++ headers in the image,
+  where `07ce31e8`'s were built from 19.1.0.
+- `/usr/bin/gcov` and `/usr/bin/cpp` link to `gcov-14` and `cpp-14`,
+  where they linked to GCC 13's, so that coverage reads GCC 14's objects
+  with GCC 14's `gcov`.
+- Go, under `/usr/local/go`, is 1.27.1, the version rowkeydb's Bazel
+  builds download, where it was 1.25.14; and golangci-lint 1.64.8 is
+  built by it, so its binary differs and reports that Go.

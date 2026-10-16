@@ -60,10 +60,13 @@ build options. The image of the releases `v0.1.0` and `v0.1.1` is the
 linux/amd64 image of `ghcr.io/chanzo-dev/rowkeydb-ci`, copied unchanged
 and tagged `v0.1.0`. From `v0.2.0` on, the image is built from
 `recipe/Dockerfile`; the manifest of the image of `v0.2.0` equals the
-earlier image's apart from the differences `manifests/README.md` lists.
-Each image is tagged with the name of the release that first names it;
-consumers name it by digest, never by tag. Next, rowkeydb moves to the
-image of `v0.2.0`; the other three repositories are brought in later.
+earlier image's apart from the differences `manifests/README.md` lists,
+and that of `v0.3.0` differs from `v0.2.0`'s in the MSan libraries, in
+`gcov` and `cpp`, and in Go, as it also lists. Each image is tagged with
+the name of the release that first names it; consumers name it by digest,
+never by tag. rowkeydb moved to the image of `v0.2.0` and then to
+`v0.3.0`, with the one set of options for third-party code; the other
+three repositories are brought in later.
 RowKeyDB's `design/shared_build_architecture.md` describes each step and
 the evidence it requires.
 
