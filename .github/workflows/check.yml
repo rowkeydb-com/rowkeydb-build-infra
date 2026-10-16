@@ -28,7 +28,7 @@ jobs:
     # The image the consumers build in, so that shellcheck and the tools
     # check.sh uses are the versions it fixes, not the runner's.
     container:
-      image: ghcr.io/rowkeydb-com/rowkeydb-build-infra@sha256:a612ddbaafe981453ff6ea9a2fee8906462be071b4f6369279d28b7f64fdfc15
+      image: ghcr.io/rowkeydb-com/rowkeydb-build-infra@sha256:8acf5b2febb45185469a30b5e47d1601a611f21e637e17f2e109abe86a69ab97
     steps:
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
