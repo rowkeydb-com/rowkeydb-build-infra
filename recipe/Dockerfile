@@ -144,8 +144,8 @@ RUN --mount=type=bind,source=recipe/files/java-cacerts,target=/tmp/java-cacerts 
         /etc/shadow /etc/shadow- \
     && update-alternatives --install /usr/bin/gcc gcc "/usr/bin/gcc-${GCC_VERSION}" 100 \
     && update-alternatives --install /usr/bin/g++ g++ "/usr/bin/g++-${GCC_VERSION}" 100 \
-    && update-alternatives --install /usr/bin/gcov gcov "/usr/bin/gcov-${GCC_VERSION}" 100 \
-    && update-alternatives --install /usr/bin/cpp cpp "/usr/bin/cpp-${GCC_VERSION}" 100 \
+    && ln -sf "gcov-${GCC_VERSION}" /usr/bin/gcov \
+    && ln -sf "cpp-${GCC_VERSION}" /usr/bin/cpp \
     && { keytool -J-XX:-UsePerfData -list -keystore /etc/ssl/certs/java/cacerts -storepass changeit \
         > /tmp/made-store || { cat /tmp/made-store >&2; exit 1; }; } \
     && { keytool -J-XX:-UsePerfData -list -keystore /tmp/java-cacerts -storepass changeit \
