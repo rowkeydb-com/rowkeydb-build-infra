@@ -61,6 +61,21 @@ build:linux --host_per_file_copt=external/.*@-w
 # Host tools (protoc, grpc_cpp_plugin) also need C++23.
 build:linux --host_cxxopt=-std=c++2b
 
+# The options for third-party code, the same in every repository, so that
+# its compilations are shared: debug information and frame pointers, for
+# stack traces through a dependency; the x86-64-v3 target with PCLMUL,
+# which every CI runner and benchmark host has (c7a, Zen 4), and which
+# RocksDB's crc32c needs for its carry-less-multiply path; and the
+# OpenTelemetry C++ SDK's exemplar API, which its preview gate hides. A
+# repository applies its own options to its own code only, with
+# `--per_file_copt=.*,-external/.*,-@@[^/]@...`: Bazel matches each
+# expression against a file's path and against its label, whose canonical
+# form begins with `@@` followed by the repository's name, empty for the
+# repository's own code.
+build --per_file_copt=external/.*@-g,-fno-omit-frame-pointer
+build:linux --per_file_copt=external/.*@-march=x86-64-v3,-mpclmul
+build --per_file_copt=external/.*@-DENABLE_METRICS_EXEMPLAR_PREVIEW
+
 # Suppress convenience symlinks (bazel-bin, bazel-out, etc.)
 build --experimental_convenience_symlinks=ignore
 

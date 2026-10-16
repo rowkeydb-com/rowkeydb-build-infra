@@ -16,8 +16,11 @@
 # inputs so that two builds give the same image. It reproduces the image
 # recipe/Dockerfile.ci built: every package, tool and file at the version
 # found in that image, apart from the changes RowKeyDB's
-# design/shared_build_architecture.md lists for the rebuild. Build it only
-# with scripts/build-image.sh, which pins the builder and its settings.
+# design/shared_build_architecture.md lists for the rebuild and for the
+# later changes: the MSan libraries built from the compiler's own LLVM
+# release, gcov and cpp from the same GCC as gcc and g++, and the Go the
+# consumers' Bazel builds use. Build it only with scripts/build-image.sh,
+# which pins the builder and its settings.
 
 # The versions of the compilers and of the tools the recipe downloads,
 # each download beside its SHA-256, and the JDK's exact package versions.
@@ -45,8 +48,8 @@ ARG BAZELISK_SHA256=d28b588ac0916abd6bf02defb5433f6eddf7cba35ffa808eabb65a44aab2
 ARG BAZEL_SHA256=ac6249d1192aea9feaf49dfee2ab50c38cee2454b00cf29bbec985a11795c025
 ARG TYPOS_VERSION=1.16.26
 ARG TYPOS_SHA256=e5c6beffdd1f46d793b1d035e917724fa8e400efb0cc0bd5c83aa892a72a9ff6
-ARG GO_VERSION=1.25.14
-ARG GO_SHA256=a21ae5633a269bcd7e90cf767e48225633795e99d831742cbf3397064fee7712
+ARG GO_VERSION=1.27.1
+ARG GO_SHA256=63d339f0da5ab53635a56f2490a7984dfe12dfcff22ad749f63edaf590168445
 ARG GCLOUD_VERSION=587.0.0
 ARG GCLOUD_SHA256=57df2448d259c654796a3703af8e5b53a02d439715b2034d6bb811efc2d6dd7b
 ARG GCLOUD_COMPONENTS_SHA256=f852af078eae4c614fb453c703aab46a813818b0df82ab650e95449b284c980d
@@ -59,8 +62,8 @@ ARG TFLINT_SHA256=cca9d13e2e1d7a2c627af60ff899a3c9b74212899416aeb96ec764d2ef9545
 ARG TRIVY_VERSION=0.74.0
 ARG TRIVY_SHA256=2ae6fe3ee734b7fdf11335663e18c75ea12dccc76062f09f164a3b0f8be4371a
 ARG GOLANGCI_LINT_VERSION=1.64.8
-ARG MSAN_LLVM_VERSION=19.1.0
-ARG MSAN_LLVM_SHA256=5042522b49945bc560ff9206f25fb87980a9b89b914193ca00d961511ff0673c
+ARG MSAN_LLVM_VERSION=19.1.7
+ARG MSAN_LLVM_SHA256=82401fea7b79d0078043f7598b835284d6650a75b93e64b6f761ea7b63097501
 
 # ubuntu:noble-20260911, linux/amd64.
 FROM ubuntu:24.04@sha256:496754492fb28b4d3049432f2ca787449331e23fb14f0dd3fffea86bf5a93eb4 AS base
@@ -141,6 +144,8 @@ RUN --mount=type=bind,source=recipe/files/java-cacerts,target=/tmp/java-cacerts 
         /etc/shadow /etc/shadow- \
     && update-alternatives --install /usr/bin/gcc gcc "/usr/bin/gcc-${GCC_VERSION}" 100 \
     && update-alternatives --install /usr/bin/g++ g++ "/usr/bin/g++-${GCC_VERSION}" 100 \
+    && update-alternatives --install /usr/bin/gcov gcov "/usr/bin/gcov-${GCC_VERSION}" 100 \
+    && update-alternatives --install /usr/bin/cpp cpp "/usr/bin/cpp-${GCC_VERSION}" 100 \
     && { keytool -J-XX:-UsePerfData -list -keystore /etc/ssl/certs/java/cacerts -storepass changeit \
         > /tmp/made-store || { cat /tmp/made-store >&2; exit 1; }; } \
     && { keytool -J-XX:-UsePerfData -list -keystore /tmp/java-cacerts -storepass changeit \

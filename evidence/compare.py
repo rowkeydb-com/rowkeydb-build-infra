@@ -61,12 +61,18 @@ on one side, and reports what each option affected:
   which the spawn that writes a test's test.xml records the test's
   duration, and prints for each side the target of every spawn it applied
   to.
+--strip-arg REGEX leaves out of the content every argument which the
+  regular expression matches whole, for a change of compiler options
+  made on purpose, and prints for each side every argument it left out,
+  with the number of spawns it left it out of. What remains must then
+  pair, which shows that the options are the only change. An expression
+  which begins with a hyphen is given as --strip-arg=REGEX.
 
 Each option but --test-duration may be given more than once.
 
 Usage: python3 -I compare.py [--strip-property NAME]... [--varying REGEX]...
-           [--rename REGEX REPLACEMENT]... [--test-duration]
-           before.jsonl after.jsonl
+           [--rename REGEX REPLACEMENT]... [--strip-arg REGEX]...
+           [--test-duration] before.jsonl after.jsonl
 """
 import argparse
 import collections
@@ -91,12 +97,15 @@ parser.add_argument("--varying", action="append", default=[],
                     metavar="REGEX")
 parser.add_argument("--rename", action="append", default=[], nargs=2,
                     metavar=("REGEX", "REPLACEMENT"))
+parser.add_argument("--strip-arg", action="append", default=[],
+                    metavar="REGEX")
 parser.add_argument("--test-duration", action="store_true")
 args = parser.parse_args()
 varying = [re.compile(v) for v in args.varying]
 renames = [(re.compile(x), y) for x, y in args.rename]
+stripped_args = [re.compile(s) for s in args.strip_arg]
 normalising = bool(args.strip_property or varying or renames
-                   or args.test_duration)
+                   or stripped_args or args.test_duration)
 
 
 def load(path):
@@ -121,6 +130,7 @@ class Report:
         self.inputs = collections.defaultdict(set)
         self.blanked = collections.defaultdict(collections.Counter)
         self.renamed = collections.defaultdict(set)
+        self.stripped = collections.Counter()
         self.durations = []
 
 
@@ -169,8 +179,17 @@ def normalise(r, report):
     a = r["args"]
     if (args.test_duration and len(a) == 5 and a[0] == GENERATE_XML
             and a[3].isdigit()):
-        norm["args"] = a[:3] + [""] + a[4:]
+        a = a[:3] + [""] + a[4:]
         report.durations.append(r["target"])
+    if stripped_args:
+        kept = []
+        for x in a:
+            if any(s.fullmatch(x) for s in stripped_args):
+                report.stripped[x] += 1
+            else:
+                kept.append(x)
+        a = kept
+    norm["args"] = a
     r["norm"] = norm
     r["key"] = hashlib.sha256(
         json.dumps(norm, sort_keys=True).encode()).hexdigest()
@@ -198,6 +217,12 @@ def print_report(side, rs, report):
         print(f"  {side}: --rename {x.pattern!r} changed {len(changed)} paths")
         for p, s in changed:
             print(f"    renamed {p} -> {s}")
+    if stripped_args:
+        print(f"  {side}: arguments left out: "
+              f"{len(report.stripped)} distinct, "
+              f"{sum(report.stripped.values())} in all")
+        for x, n in sorted(report.stripped.items()):
+            print(f"    argument {x!r} left out of {n} spawns")
     if args.test_duration:
         print(f"  {side}: test durations left out of "
               f"{len(report.durations)} spawns")

@@ -43,7 +43,10 @@ BuildBuddy API key, read from `~/.config/buildbuddy/api-key` unless
   `--test-duration` leaves out the test's duration from the arguments of
   the spawn which writes `test.xml`. A fourth, `--rename`, replaces a
   part of each path, for files whose names differ from run to run, and
-  prints every path it changed.
+  prints every path it changed. A fifth, `--strip-arg`, leaves out of the
+  content every argument a regular expression matches whole, for a change
+  of compiler options made on purpose, and prints each argument left out
+  with the number of spawns; what remains must then pair.
 - `find.py` prints the digest and size of each file entry in an execution
   log whose path matches a regular expression, and `fetch_blob.sh`
   downloads such a file from BuildBuddy's cache and checks its digest.
@@ -138,6 +141,20 @@ runs in its own branch's image. The procedure then differs as follows.
   The pair is equal when no spawn was a cache hit, every spawn and every
   symlink action is paired by content, each side names only its own image,
   and no pair's outputs differ.
+
+When a change is meant to change the build, as the later changes of
+RowKeyDB's design are, the procedure differs again.
+
+- The before side may be the kept logs of an earlier comparison's after
+  branch, if every action ran in them; no before branch runs again.
+- The after branch adds the evidence workflow only. A new image changes
+  every remote action's key, so every remote action runs without
+  `--noremote_accept_cached`; the spawns which run in the client container
+  may be cache hits, and are named in the record.
+- Each pair is compared with `--strip-arg` as well, one expression for
+  each compiler option the change adds or moves, listed in advance. What
+  fails to pair, and each output which differs, must be what the change
+  intends, and is accounted for in the record.
 - The merged coverage reports vary in their counts, so their records
   without counts are compared instead, and must be equal; which lines and
   branches were executed is then not compared. For each side's coverage

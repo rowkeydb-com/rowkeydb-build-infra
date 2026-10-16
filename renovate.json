@@ -1,0 +1,65 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Proposes new upstream versions of the four shared modules in MODULE.bazel and of the tools the recipe downloads. A proposal is taken by hand: the checksum beside a tool's version is set from the new download, and the image is rebuilt and shown reproducible, as RowKeyDB's design/shared_build_architecture.md requires.",
+  "extends": ["config:recommended"],
+  "dependencyDashboard": true,
+  "prConcurrentLimit": 4,
+  "enabledManagers": ["bazel-module", "custom.regex"],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^recipe/Dockerfile$/"],
+      "matchStrings": ["ARG BAZELISK_VERSION=(?<currentValue>[0-9.]+)\\n"],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "bazelbuild/bazelisk",
+      "extractVersionTemplate": "^v(?<version>.*)$"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^recipe/Dockerfile$/"],
+      "matchStrings": ["ARG TYPOS_VERSION=(?<currentValue>[0-9.]+)\\n"],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "crate-ci/typos",
+      "extractVersionTemplate": "^v(?<version>.*)$"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^recipe/Dockerfile$/"],
+      "matchStrings": ["ARG GO_VERSION=(?<currentValue>[0-9.]+)\\n"],
+      "datasourceTemplate": "golang-version",
+      "depNameTemplate": "golang"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^recipe/Dockerfile$/"],
+      "matchStrings": ["ARG TERRAFORM_VERSION=(?<currentValue>[0-9.]+)\\n"],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "hashicorp/terraform",
+      "extractVersionTemplate": "^v(?<version>.*)$"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^recipe/Dockerfile$/"],
+      "matchStrings": ["ARG TFLINT_VERSION=(?<currentValue>[0-9.]+)\\n"],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "terraform-linters/tflint",
+      "extractVersionTemplate": "^v(?<version>.*)$"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^recipe/Dockerfile$/"],
+      "matchStrings": ["ARG TRIVY_VERSION=(?<currentValue>[0-9.]+)\\n"],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "aquasecurity/trivy",
+      "extractVersionTemplate": "^v(?<version>.*)$"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^recipe/Dockerfile$/"],
+      "matchStrings": ["ARG GOLANGCI_LINT_VERSION=(?<currentValue>[0-9.]+)\\n"],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "golangci/golangci-lint",
+      "extractVersionTemplate": "^v(?<version>.*)$"
+    }
+  ]
+}
