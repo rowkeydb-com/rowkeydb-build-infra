@@ -30,9 +30,11 @@ BuildBuddy API key, read from `~/.config/buildbuddy/api-key` unless
   between, its key unchanged; when this side ran first, it is the action
   whose result the other side then found. Last, it pairs the spawns of the
   two sides by content and compares the digests of their outputs, counting
-  each set of outputs as often as it occurs. Three options serve a change
-  of image, which changes every action digest, and each reports what it
-  affected. `--strip-property` removes a platform property from the
+  each set of outputs as often as it occurs. Four options serve a
+  comparison by content, which a change of image needs, since it changes
+  every action digest, and which two runs of one commit also need, since
+  some files vary from run to run; each reports what it affected.
+  `--strip-property` removes a platform property from the
   content and prints, for each side, every value the property had.
   `--varying` names, by a regular expression which must match the whole
   path, files which differ from run to run; their digests are left out of
@@ -42,12 +44,12 @@ BuildBuddy API key, read from `~/.config/buildbuddy/api-key` unless
   the spawn which writes `test.xml`. A fourth, `--rename`, replaces a
   part of each path, for files whose names differ from run to run, and
   prints every path it changed.
-- `find.py` prints the digest and size of each file in an execution log
-  whose path matches a regular expression, and `fetch_blob.sh` downloads
-  such a file from BuildBuddy's cache and checks its digest.
-- `lcov_shape.py` prints an lcov coverage report without its counts:
-  each source file and the set of lines, functions and branches listed
-  for it.
+- `find.py` prints the digest and size of each file entry in an execution
+  log whose path matches a regular expression, and `fetch_blob.sh`
+  downloads such a file from BuildBuddy's cache and checks its digest.
+- `lcov_records.py` prints an lcov coverage report's records without
+  their counts: each source file and the set of lines, functions and
+  branches listed for it.
 - `rcexpand.py` expands two rc files as Bazel's client does. It then
   compares every option of every configuration in them, including the
   configurations no CI job runs.
@@ -136,15 +138,17 @@ runs in its own branch's image. The procedure then differs as follows.
   The pair is equal when no spawn was a cache hit, every spawn and every
   symlink action is paired by content, each side names only its own image,
   and no pair's outputs differ.
-- The merged coverage reports vary in their counts, so their shapes are
-  compared instead, and must be equal. For each side's coverage
+- The merged coverage reports vary in their counts, so their records
+  without counts are compared instead, and must be equal; which lines and
+  branches were executed is then not compared. For each side's coverage
   invocation:
 
   ```
   zstd -dc <dir>/<side>-<id>.zst | python3 -I evidence/find.py \
       spawn.desc 'bazel-out/_coverage/_coverage_report\.dat'
   evidence/fetch_blob.sh <side>-report.dat <id> <digest> <size>
-  python3 -I evidence/lcov_shape.py <side>-report.dat > <side>-shape.txt
+  python3 -I evidence/lcov_records.py <side>-report.dat \
+      > <side>-records.txt
   ```
 
-  and then `diff before-shape.txt after-shape.txt`.
+  and then `diff before-records.txt after-records.txt`.

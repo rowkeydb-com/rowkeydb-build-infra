@@ -15,7 +15,10 @@
 
 # Downloads one file from BuildBuddy's cache by its digest and size, as
 # find.py prints them, through the invocation which wrote it, and checks
-# its SHA-256. The API key is read as fetch.sh reads it, and never printed.
+# its SHA-256. The download goes to a temporary file beside <file>, which
+# takes the name <file>, with mode 0644, only when the check passes, and is
+# removed otherwise. The API key is read as fetch.sh reads it, and never
+# printed.
 #
 # Usage: evidence/fetch_blob.sh <file> <invocation id> <digest> <size>
 
@@ -40,9 +43,14 @@ fi
 key_file="${BUILDBUDDY_API_KEY_FILE:-$HOME/.config/buildbuddy/api-key}"
 [ -r "$key_file" ] || { echo "cannot read $key_file" >&2; exit 1; }
 
+tmp="$(mktemp "$file.XXXXXX")"
+trap 'rm -f "$tmp"' EXIT
+
 printf 'x-buildbuddy-api-key: %s\n' "$(< "$key_file")" |
-    curl -fsS -G -H @- -o "$file" \
+    curl -fsS -G -H @- -o "$tmp" \
         --data-urlencode "bytestream_url=bytestream://remote.buildbuddy.io/blobs/$digest/$size" \
         --data-urlencode "invocation_id=$id" \
         https://app.buildbuddy.io/file/download
-echo "$digest  $file" | sha256sum -c --quiet
+echo "$digest  $tmp" | sha256sum -c --quiet
+chmod 0644 "$tmp"
+mv "$tmp" "$file"

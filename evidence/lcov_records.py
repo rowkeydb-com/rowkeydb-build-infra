@@ -12,19 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Prints an lcov report without its execution counts.
+"""Prints the records of an lcov report without their execution counts.
 
-What remains is the report's shape: each source file, and the set of
-lines, functions and branches the report lists for it. The counts are left
-out, since a test with threads may execute a line a different number of
-times, or take a different branch, from one run to the next. So are the
-totals of lines, functions and branches found and hit, which follow from
-the records, and repeated records: Bazel's merger may list a branch that
-no test executed once or several times. Files are printed in order of their
-paths, and the records of each file in sorted order, so that the order in
-which the report was merged does not matter.
+What remains is each source file, and the set of lines, functions and
+branches the report lists for it. The counts are left out, since a test
+with threads may execute a line a different number of times, or take a
+different branch, from one run to the next; with them goes which lines and
+branches were executed. So are the totals of lines, functions and branches
+found and hit, which follow from the records, and repeated records: Bazel's
+merger may list a branch that no test executed once or several times.
+Files are printed in order of their paths, and the records of each file in
+sorted order, so that the order in which the report was merged does not
+matter.
 
-Usage: python3 -I lcov_shape.py report.dat
+Usage: python3 -I lcov_records.py report.dat
 """
 import collections
 import sys

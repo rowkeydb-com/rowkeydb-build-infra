@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Prints the path, digest and size of each file in an execution log whose
-path the regular expression matches whole, one line each, so that the file
-can be fetched with fetch_blob.sh.
+"""Prints the path, digest and size of each file entry in an execution log
+whose path the regular expression matches whole, one line each, so that
+the file can be fetched with fetch_blob.sh. Files inside a directory entry,
+such as a tree artifact's, are not file entries and are not printed.
 
 Usage: zstd -dc log.zst | python3 -I find.py spawn.desc REGEX
 """

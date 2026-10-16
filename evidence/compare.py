@@ -30,12 +30,15 @@ digests of their outputs: for each content, the multiset of output sets on
 one side with that on the other. It prints every path whose digest differs
 within a pair, and the number of such pairs.
 
-When the image changes, every action digest changes with the platform's
-container-image property, and the comparison of content needs four
-options. With any of them it also prints, for each side, the number of
-cache hits and the runners of the spawns, describes the spawns found after
-only as it does those found before only, names each spawn whose content
-occurs more often on one side, and reports what each option affected:
+Four options serve a comparison by content, which a change of image needs,
+since every action digest changes with the platform's container-image
+property, and which two runs of one commit also need, since some files vary
+from run to run. One removes a property, and the others leave out what
+varies: a file's digest, part of its name, or a test's duration. With any
+of them it also prints, for each side, the number of cache hits and the
+runners of the spawns, describes the spawns found after only as it does
+those found before only, names each spawn whose content occurs more often
+on one side, and reports what each option affected:
 
 --strip-property NAME removes the platform property NAME from the content.
   For each side it prints every value the property had, with the number of
@@ -233,7 +236,7 @@ def compare_outputs(ra, rb):
     for r in rb:
         ob[r["key"]][outputs(r)] += 1
     paired = differ = 0
-    for key in oa.keys() & ob.keys():
+    for key in sorted(oa.keys() & ob.keys()):
         paired += min(sum(oa[key].values()), sum(ob[key].values()))
         only_a, only_b = oa[key] - ob[key], ob[key] - oa[key]
         # A spawn which occurs more often on one side has no partner, and is
