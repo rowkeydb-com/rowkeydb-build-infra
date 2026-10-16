@@ -64,7 +64,7 @@ earlier image's apart from the differences `manifests/README.md` lists,
 and that of `v0.3.1` differs from `v0.2.0`'s in the MSan libraries and in
 `gcov` and `cpp`, as it also lists. Each image is tagged with the name of
 the release that first names it; consumers name it by digest, never by
-tag. rowkeydb moved to the image of `v0.2.0` and then to `v0.3.1`, with
+tag. rowkeydb moved to the image of `v0.2.0` and then to `v0.3.2`, with
 the one set of options for third-party code; the other three repositories
 are brought in later. RowKeyDB's `design/shared_build_architecture.md`
 describes each step and the evidence it requires.
