@@ -183,9 +183,12 @@ def normalise(r, report):
         report.durations.append(r["target"])
     if stripped_args:
         kept = []
+        seen = set()
         for x in a:
             if any(s.fullmatch(x) for s in stripped_args):
-                report.stripped[x] += 1
+                if x not in seen:
+                    seen.add(x)
+                    report.stripped[x] += 1
             else:
                 kept.append(x)
         a = kept
