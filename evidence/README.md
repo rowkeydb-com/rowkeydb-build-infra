@@ -146,7 +146,9 @@ When a change is meant to change the build, as the later changes of
 RowKeyDB's design are, the procedure differs again.
 
 - The before side may be the kept logs of an earlier comparison's after
-  branch, if every action ran in them; no before branch runs again.
+  branch, if every spawn in them, run or taken from the cache, names that
+  branch's image, since a hit's recorded outputs are those of its digest
+  under that image; no before branch runs again.
 - The after branch adds the evidence workflow only. A new image changes
   every remote action's key, so every remote action runs without
   `--noremote_accept_cached`; the spawns which run in the client container
