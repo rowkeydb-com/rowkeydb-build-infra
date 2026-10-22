@@ -15,10 +15,14 @@ repository's releases and compressed with zstd, as `manifest-*.txt.zst`.
 manifest is named by the first eight hexadecimal digits of the digest of
 the linux/amd64 image it describes.
 
-- `manifest-8acf5b2f.txt` describes the image `image.bzl` names,
+- `manifest-c5d4150a.txt` describes the image `image.bzl` names,
+  `sha256:c5d4150af77c2091b3c30f52f9d5eb2c97d18ab6fde286e60785821c7e67bf60`,
+  which `scripts/build-image.sh` builds from `recipe/Dockerfile` at
+  7af55f6, for the release `v0.4.0`.
+- `manifest-8acf5b2f.txt` describes the image of `v0.3.1` and `v0.3.2`,
   `sha256:8acf5b2febb45185469a30b5e47d1601a611f21e637e17f2e109abe86a69ab97`,
   which `scripts/build-image.sh` builds from `recipe/Dockerfile` at
-  df0359a, for the release `v0.3.1`.
+  df0359a.
 - `manifest-a612ddba.txt` describes the image of `v0.3.0`, superseded,
   `sha256:a612ddbaafe981453ff6ea9a2fee8906462be071b4f6369279d28b7f64fdfc15`,
   which `scripts/build-image.sh` builds from `recipe/Dockerfile` at
@@ -115,3 +119,14 @@ versions are the same.
 The manifest of `a612ddba`, the superseded image of `v0.3.0`, differs
 from `8acf5b2f`'s in Go alone: 1.27.1 under `/usr/local/go`, and
 golangci-lint 1.64.8 built by it.
+
+The manifest of the image `c5d4150a` differs from that of `8acf5b2f` in
+Go and golangci-lint, the move RowKeyDB's design lists after the later
+changes, and in nothing else: Go 1.27.3 under `/usr/local/go`, where
+`8acf5b2f` holds 1.25.14; golangci-lint 2.15.0 built by it, at
+`/usr/local/bin/golangci-lint`, where `8acf5b2f` holds 1.64.8, with the
+sources of its modules under `/root/go/pkg/mod`, which Go's checksum
+database fixes; the empty directory its build leaves,
+`/root/.cache/goimports` in place of `/root/.cache/go/imports`; and the
+two versions the tools section reports. The configuration, the Debian
+packages and the extended attributes are the same.
