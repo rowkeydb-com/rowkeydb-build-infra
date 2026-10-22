@@ -48,8 +48,8 @@ ARG BAZELISK_SHA256=d28b588ac0916abd6bf02defb5433f6eddf7cba35ffa808eabb65a44aab2
 ARG BAZEL_SHA256=ac6249d1192aea9feaf49dfee2ab50c38cee2454b00cf29bbec985a11795c025
 ARG TYPOS_VERSION=1.16.26
 ARG TYPOS_SHA256=e5c6beffdd1f46d793b1d035e917724fa8e400efb0cc0bd5c83aa892a72a9ff6
-ARG GO_VERSION=1.25.14
-ARG GO_SHA256=a21ae5633a269bcd7e90cf767e48225633795e99d831742cbf3397064fee7712
+ARG GO_VERSION=1.27.3
+ARG GO_SHA256=65efbc80fdc1fa2cd2631cad5b481777a68e8725f34e89f50fc6ac714e379b40
 ARG GCLOUD_VERSION=587.0.0
 ARG GCLOUD_SHA256=57df2448d259c654796a3703af8e5b53a02d439715b2034d6bb811efc2d6dd7b
 ARG GCLOUD_COMPONENTS_SHA256=f852af078eae4c614fb453c703aab46a813818b0df82ab650e95449b284c980d
@@ -61,7 +61,7 @@ ARG TFLINT_VERSION=0.64.0
 ARG TFLINT_SHA256=cca9d13e2e1d7a2c627af60ff899a3c9b74212899416aeb96ec764d2ef954537
 ARG TRIVY_VERSION=0.74.0
 ARG TRIVY_SHA256=2ae6fe3ee734b7fdf11335663e18c75ea12dccc76062f09f164a3b0f8be4371a
-ARG GOLANGCI_LINT_VERSION=1.64.8
+ARG GOLANGCI_LINT_VERSION=2.15.0
 ARG MSAN_LLVM_VERSION=19.1.7
 ARG MSAN_LLVM_SHA256=82401fea7b79d0078043f7598b835284d6650a75b93e64b6f761ea7b63097501
 
@@ -298,7 +298,7 @@ RUN curl -fsSL -o /tmp/trivy.tar.gz "https://github.com/aquasecurity/trivy/relea
 # Go's build cache, its usage counters and its copies of the checksum
 # database's state at the time of the build are removed.
 ARG GOLANGCI_LINT_VERSION
-RUN /usr/local/go/bin/go install "github.com/golangci/golangci-lint/cmd/golangci-lint@v${GOLANGCI_LINT_VERSION}" \
+RUN /usr/local/go/bin/go install "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v${GOLANGCI_LINT_VERSION}" \
     && mv /root/go/bin/golangci-lint /usr/local/bin/ \
     && rm -rf /root/.cache/go-build /root/.config/go/telemetry /root/go/pkg/sumdb \
         /root/go/pkg/mod/cache/download/sumdb
