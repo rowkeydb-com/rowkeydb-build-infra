@@ -133,9 +133,13 @@ build:clang --cxxopt=-Wthread-safety
 build:clang --cxxopt=-Werror=thread-safety
 
 # --config sanitizer: Common settings for all sanitizers.
-# A consumer may set -g, --strip=never and -fno-omit-frame-pointer in its
-# own options; rowkeydb does, for every build.
-build:sanitizer --copt=-Og
+# Optimize at -O2 in fastbuild mode (-U_FORTIFY_SOURCE, assertions kept) while
+# keeping leaf frame pointers and preventing tail-call frame elision in stack
+# traces. A consumer may set -g, --strip=never and -fno-omit-frame-pointer in
+# its own options; rowkeydb and rowkeyraft do, for every build.
+build:sanitizer --copt=-O2
+build:sanitizer --copt=-mno-omit-leaf-frame-pointer
+build:sanitizer --copt=-fno-optimize-sibling-calls
 # Sanitizers make tests slower: ASan by about two to three times, TSan by
 # five to twenty. The timeouts for each test size are therefore twice the
 # defaults, the eternal one apart, so that a large test is not stopped at
@@ -169,14 +173,14 @@ build:asan-ubsan --linkopt=-fno-sanitize=vptr
 build:asan-ubsan --action_env=UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1
 
 # --config msan: Memory Sanitizer (requires instrumented libc++).
-# Instrument memory, track the origins of uninitialized values, detect use
-# after destruction, and optimize at -O1.
+# Instrument memory, track the allocation origins of uninitialized values
+# (level 1, without intermediate store chaining), and detect use after
+# destruction. Optimization (-O2) comes from --config=sanitizer.
 build:msan --config=sanitizer
 build:msan --config=clang
 build:msan --copt=-fsanitize=memory
-build:msan --copt=-fsanitize-memory-track-origins
+build:msan --copt=-fsanitize-memory-track-origins=1
 build:msan --copt=-fsanitize-memory-use-after-dtor
-build:msan --copt=-O1
 build:msan --cxxopt=-std=c++2b
 build:msan --linkopt=-fsanitize=memory
 build:msan --action_env=MSAN_OPTIONS=poison_in_dtor=1
