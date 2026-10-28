@@ -224,7 +224,7 @@ build --experimental_disk_cache_gc_max_size=50G
 # image, for every configuration, so that the cache keys of local builds
 # name it as well as those of remote ones. image.bzl holds the same digest
 # for the consumers' execution platforms; scripts/check.sh compares them.
-build --remote_default_exec_properties=container-image=docker://ghcr.io/rowkeydb-com/rowkeydb-build-infra@sha256:c5d4150af77c2091b3c30f52f9d5eb2c97d18ab6fde286e60785821c7e67bf60
+build --remote_default_exec_properties=container-image=docker://ghcr.io/rowkeydb-com/rowkeydb-build-infra@sha256:c811e74114ebedf787178468c9a796e4e37ae7e55f2d2fdc63501ea940c04515
 
 # BuildBuddy Remote Build Execution Configuration. A consumer adds its own
 # --credential_helper and --workspace_status_command.

@@ -25,11 +25,10 @@ and scripts) are compared with it by scripts/check.sh.
 IMAGE_REPOSITORY = "ghcr.io/rowkeydb-com/rowkeydb-build-infra"
 
 # The linux/amd64 image which scripts/build-image.sh builds from
-# recipe/Dockerfile, tagged v0.4.0. Two builds without any build cache, on
-# different machines, gave this digest. Its manifest differs from that of
-# the image of v0.3.1 only as manifests/README.md states: Go and
-# golangci-lint.
-IMAGE_DIGEST_AMD64 = "sha256:c5d4150af77c2091b3c30f52f9d5eb2c97d18ab6fde286e60785821c7e67bf60"
+# recipe/Dockerfile, tagged v0.5.0. A build without any build cache, on
+# the owner's machine, gave this digest. Its manifest differs from that of
+# the image of v0.4.0 only as manifests/README.md states: Bazel.
+IMAGE_DIGEST_AMD64 = "sha256:c811e74114ebedf787178468c9a796e4e37ae7e55f2d2fdc63501ea940c04515"
 
 # The value of the `container-image` execution property.
 IMAGE_AMD64 = "docker://" + IMAGE_REPOSITORY + "@" + IMAGE_DIGEST_AMD64

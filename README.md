@@ -62,8 +62,9 @@ and tagged `v0.1.0`. From `v0.2.0` on, the image is built from
 `recipe/Dockerfile`; the manifest of the image of `v0.2.0` equals the
 earlier image's apart from the differences `manifests/README.md` lists,
 that of `v0.3.1` differs from `v0.2.0`'s in the MSan libraries and in
-`gcov` and `cpp`, and that of `v0.4.0` from `v0.3.1`'s in Go and
-golangci-lint, as it also lists. Each image is tagged with the name of
+`gcov` and `cpp`, that of `v0.4.0` from `v0.3.1`'s in Go and
+golangci-lint, and that of `v0.5.0` from `v0.4.0`'s in Bazel, as it
+also lists. Each image is tagged with the name of
 the release that first names it; consumers name it by digest, never by
 tag. rowkeydb moved to the image of `v0.2.0`, then to the image `v0.3.2`
 names, with the one set of options for third-party code, and then to

@@ -15,10 +15,14 @@ repository's releases and compressed with zstd, as `manifest-*.txt.zst`.
 manifest is named by the first eight hexadecimal digits of the digest of
 the linux/amd64 image it describes.
 
-- `manifest-c5d4150a.txt` describes the image `image.bzl` names,
+- `manifest-c811e741.txt` describes the image `image.bzl` names,
+  `sha256:c811e74114ebedf787178468c9a796e4e37ae7e55f2d2fdc63501ea940c04515`,
+  which `scripts/build-image.sh` builds from `recipe/Dockerfile` at
+  e68c7b2, for the release `v0.5.0`.
+- `manifest-c5d4150a.txt` describes the image of `v0.4.0` and `v0.4.1`,
   `sha256:c5d4150af77c2091b3c30f52f9d5eb2c97d18ab6fde286e60785821c7e67bf60`,
   which `scripts/build-image.sh` builds from `recipe/Dockerfile` at
-  7af55f6, for the release `v0.4.0`.
+  7af55f6.
 - `manifest-8acf5b2f.txt` describes the image of `v0.3.1` and `v0.3.2`,
   `sha256:8acf5b2febb45185469a30b5e47d1601a611f21e637e17f2e109abe86a69ab97`,
   which `scripts/build-image.sh` builds from `recipe/Dockerfile` at
@@ -130,3 +134,13 @@ database fixes; the empty directory its build leaves,
 `/root/.cache/goimports` in place of `/root/.cache/go/imports`; and the
 two versions the tools section reports. The configuration, the Debian
 packages and the extended attributes are the same.
+
+The manifest of the image `c811e741` differs from that of `c5d4150a` in
+Bazel alone: Bazelisk holds Bazel 8.8.0, under the SHA-256 Bazel
+publishes for `bazel-8.8.0-linux-x86_64`, where `c5d4150a` holds 7.6.1,
+with the record Bazelisk keeps of the download; `/workspace/.bazelversion`
+names 8.8.0; and the tools section reports the version Bazelisk holds.
+The configuration, the Debian packages, the extended attributes and every
+other file are the same. It was built once, on the owner's machine, by
+the owner's decision of 2026-10-28, where earlier images were built twice
+on different machines.
