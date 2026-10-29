@@ -149,8 +149,6 @@ test:sanitizer --test_timeout=120,600,1800,3600
 # --config asan: Address Sanitizer
 build:asan --config=sanitizer
 build:asan --copt=-fsanitize=address
-build:asan --per_file_copt=com_google_protobuf//@-Wno-error
-build:asan --per_file_copt=protobuf~//@-Wno-error
 build:asan --linkopt=-fsanitize=address
 build:asan --action_env=ASAN_OPTIONS=detect_leaks=1:color=always
 build:asan --action_env=LSAN_OPTIONS=report_objects=1
@@ -244,6 +242,13 @@ build:buildbuddy --experimental_profile_include_primary_output
 build:buildbuddy --nolegacy_important_outputs
 coverage:buildbuddy --experimental_split_coverage_postprocessing
 coverage:buildbuddy --experimental_fetch_all_coverage_outputs
+# A test or coverage run downloads only what Bazel itself needs, such as
+# the test logs, and not the test binaries, which run on the executors and
+# which no step reads afterwards; a build still downloads its top-level
+# outputs. The combined coverage report, which the consumers copy out after
+# a coverage run, is always downloaded.
+test:buildbuddy --remote_download_minimal
+coverage:buildbuddy --remote_download_regex=.*/_coverage/_coverage_report\.dat$
 
 # Hardware configuration profiles, used by CI to fit Bazel's analysis and
 # execution to the runner. A runner which only hosts the Bazel client while

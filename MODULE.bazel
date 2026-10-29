@@ -18,7 +18,7 @@ shared modules, and the shared build options."""
 
 module(
     name = "rowkeydb_build_infra",
-    version = "0.5.0",
+    version = "0.6.0",
     compatibility_level = 1,
 )
 
@@ -27,7 +27,7 @@ module(
 # already contains the module by another path, where it is a lower bound,
 # and adds the module nowhere else. Every consumer declares the same
 # versions; scripts/check.sh compares them.
-bazel_dep(name = "abseil-cpp", version = "20250814.1", repo_name = None)
-bazel_dep(name = "protobuf", version = "33.5", repo_name = None)
-bazel_dep(name = "grpc", version = "1.81.1", repo_name = None)
-bazel_dep(name = "opentelemetry-cpp", version = "1.24.0.bcr.1", repo_name = None)
+bazel_dep(name = "abseil-cpp", version = "20260817.0", repo_name = None)
+bazel_dep(name = "protobuf", version = "36.2", repo_name = None)
+bazel_dep(name = "grpc", version = "1.85.0", repo_name = None)
+bazel_dep(name = "opentelemetry-cpp", version = "1.30.0", repo_name = None)
