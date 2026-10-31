@@ -46,9 +46,11 @@ build:linux --cxxopt=-std=c++2b
 build:linux --cxxopt=-Wall --host_cxxopt=-Wall
 build:linux --cxxopt=-Wextra --host_cxxopt=-Wextra
 build:linux --cxxopt=-Werror --host_cxxopt=-Werror
-# Google C++ Style Guide: no exceptions. Dependencies (abseil, protobuf,
-# gRPC) detect this flag and switch to abort-on-error code paths.
-build:linux --cxxopt=-fno-exceptions
+# Google C++ Style Guide: no exceptions, in every compilation, the tools
+# built for the host (protoc, the gRPC plugins) included. Dependencies
+# (abseil, protobuf, gRPC) detect this flag and switch to abort-on-error
+# code paths.
+build:linux --cxxopt=-fno-exceptions --host_cxxopt=-fno-exceptions
 # -fno-rtti cannot be applied globally: protobuf uses typeid internally.
 # Suppress GCC's -Wmissing-requires from protobuf headers (GCC 14 and
 # later, C++20 and later).
