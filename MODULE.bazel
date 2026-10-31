@@ -13,14 +13,18 @@
 # limitations under the License.
 
 """The shared build infrastructure of RowKeyDB, RowKeyRaft, Limen and
-zetasketch-cpp: the image every build runs in, the approved versions of the
-shared modules, and the shared build options."""
+zetasketch-cpp: the image every build runs in, the platforms BuildBuddy
+runs actions on, the approved versions of the shared modules, and the
+shared build options."""
 
 module(
     name = "rowkeydb_build_infra",
-    version = "0.6.1",
+    version = "0.7.0",
     compatibility_level = 1,
 )
+
+# The constraints the platforms in buildbuddy/ are made of.
+bazel_dep(name = "platforms", version = "1.1.0")
 
 # The approved versions of the four shared modules. Each is a "nodep"
 # dependency (repo_name = None): it takes effect only in a graph which

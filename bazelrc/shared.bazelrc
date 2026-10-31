@@ -51,7 +51,13 @@ build:linux --cxxopt=-Werror --host_cxxopt=-Werror
 # (abseil, protobuf, gRPC) detect this flag and switch to abort-on-error
 # code paths.
 build:linux --cxxopt=-fno-exceptions --host_cxxopt=-fno-exceptions
-# -fno-rtti cannot be applied globally: protobuf uses typeid internally.
+# Google C++ Style Guide: no run-time type information, in every
+# compilation, host tools included. The four shared modules compile without
+# it: each leaves out its uses of dynamic_cast and typeid when it is off. A
+# dependency which needs it gets -frtti back, for its own files only, from
+# the consumer which builds it, as RocksDB does from rowkeydb: its
+# transaction code asserts with dynamic_cast wherever NDEBUG is not defined.
+build:linux --cxxopt=-fno-rtti --host_cxxopt=-fno-rtti
 # Suppress GCC's -Wmissing-requires from protobuf headers (GCC 14 and
 # later, C++20 and later).
 # GCC ignores -Wno-unknown-warning-option; it tells clang to ignore -W
@@ -82,6 +88,17 @@ build:linux --host_cxxopt=-std=c++2b
 build --per_file_copt=external/.*@-g,-fno-omit-frame-pointer
 build:linux --per_file_copt=external/.*@-march=x86-64-v3,-mpclmul
 build --per_file_copt=external/.*@-DENABLE_METRICS_EXEMPLAR_PREVIEW
+
+# Clang's layering check, a feature only the clang toolchain has, is off in
+# the target configuration. Abseil's packages turn it on for themselves, so
+# a consumer which left it alone would compile Abseil with other options
+# than one which turned it off. It is off rather than on because gRPC
+# includes zlib's private zconf.h and zlib.h, which the check rejects from
+# outside zlib. Bazel lets a negative --features value override every
+# package's and target's own setting, so a consumer's package which asks
+# for the check does not get it either. Tools built for the host keep each
+# package's own setting, the same in every consumer.
+build --features=-layering_check
 
 # Suppress convenience symlinks (bazel-bin, bazel-out, etc.)
 build --experimental_convenience_symlinks=ignore
@@ -152,6 +169,12 @@ test:sanitizer --test_timeout=120,600,1800,3600
 build:asan --config=sanitizer
 build:asan --copt=-fsanitize=address
 build:asan --linkopt=-fsanitize=address
+# Annotate std::vector for AddressSanitizer, so that an access to its unused
+# capacity is reported. libstdc++ requires _GLIBCXX_SANITIZE_VECTOR to have
+# the same value in every translation unit that creates, destroys or
+# modifies a vector, so it is set here, for every compilation of an ASan
+# build, third-party code included.
+build:asan --cxxopt=-D_GLIBCXX_SANITIZE_VECTOR
 build:asan --action_env=ASAN_OPTIONS=detect_leaks=1:color=always
 build:asan --action_env=LSAN_OPTIONS=report_objects=1
 
@@ -223,7 +246,8 @@ build --experimental_disk_cache_gc_max_size=50G
 # The image every action runs in, named by the digest of its linux/amd64
 # image, for every configuration, so that the cache keys of local builds
 # name it as well as those of remote ones. image.bzl holds the same digest
-# for the consumers' execution platforms; scripts/check.sh compares them.
+# for the execution platforms in buildbuddy/; scripts/check.sh compares
+# them.
 build --remote_default_exec_properties=container-image=docker://ghcr.io/rowkeydb-com/rowkeydb-build-infra@sha256:c811e74114ebedf787178468c9a796e4e37ae7e55f2d2fdc63501ea940c04515
 
 # BuildBuddy Remote Build Execution Configuration. A consumer adds its own
@@ -242,6 +266,15 @@ build:buildbuddy --noslim_profile
 build:buildbuddy --experimental_profile_include_target_label
 build:buildbuddy --experimental_profile_include_primary_output
 build:buildbuddy --nolegacy_important_outputs
+# The platform every action runs on, from buildbuddy/ in this module, the
+# same in every consumer. --extra_execution_platforms keeps only the last
+# value given, so each sanitizer variant replaces the platform of
+# --config=buildbuddy with its own, whose tests run in virtual machines.
+build:buildbuddy --extra_execution_platforms=@rowkeydb_build_infra//buildbuddy:executor
+build:buildbuddy-tsan --config=buildbuddy
+build:buildbuddy-tsan --extra_execution_platforms=@rowkeydb_build_infra//buildbuddy:executor_tests_in_vm
+build:buildbuddy-msan --config=buildbuddy
+build:buildbuddy-msan --extra_execution_platforms=@rowkeydb_build_infra//buildbuddy:executor_msan
 coverage:buildbuddy --experimental_split_coverage_postprocessing
 coverage:buildbuddy --experimental_fetch_all_coverage_outputs
 # A test or coverage run downloads only what Bazel itself needs, such as

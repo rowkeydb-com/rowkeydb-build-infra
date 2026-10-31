@@ -1,0 +1,77 @@
+# Copyright 2026 Chanzo
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Where BuildBuddy runs the consumers' actions, under `--config=buildbuddy`
+# and its sanitizer variants in bazelrc/shared.bazelrc.
+#
+# The platforms are defined here, once, and not in each consumer, because
+# their properties enter the cache key of every action that runs on them,
+# and their label enters the output paths of the execution configuration
+# (protoc, the gRPC plugins): a dependency's action is shared between
+# consumers only when both are the same.
+#
+# Every action runs in the image image.bzl names by digest, the one the
+# consumers run Bazel in, so that the executors and the client cannot run
+# different images. The client configures the toolchain inside that image
+# (`--repo_env=CC=gcc-14`, or clang-19 under `--config=clang`, and the
+# memory sanitizer's libc++ under /usr/lib/llvm-19), so the executors must
+# have the same paths.
+
+load("//:image.bzl", "IMAGE_AMD64")
+
+package(default_visibility = ["//visibility:public"])
+
+# Builds, the analysis steps, and the tests which need nothing more.
+platform(
+    name = "executor",
+    constraint_values = [
+        "@platforms//cpu:x86_64",
+        "@platforms//os:linux",
+    ],
+    exec_properties = {
+        "OSFamily": "Linux",
+        "container-image": IMAGE_AMD64,
+    },
+)
+
+# The thread sanitizer turns address randomisation off with personality(),
+# which BuildBuddy's default container refuses, as Docker's default system
+# call filter does. Its tests therefore run each in a virtual machine of its
+# own, which allows the call; its builds need no such thing. The properties
+# named `test.` apply to test actions only, so a compilation carries the
+# same properties as under `executor`. A virtual machine is given only the
+# memory its action asks for, and one which asks for none is given too
+# little, so each test asks for two gigabytes here; a test which needs more
+# asks for it on its target, a request on the target taking precedence over
+# one on the platform.
+platform(
+    name = "executor_tests_in_vm",
+    exec_properties = {
+        "test.EstimatedMemory": "2GB",
+        "test.workload-isolation-type": "firecracker",
+    },
+    parents = [":executor"],
+)
+
+# The memory sanitizer's tests run the same way, and its shadow memory
+# makes them need more: each asks for twelve gigabytes here, and a test
+# which needs more asks for it on its target.
+platform(
+    name = "executor_msan",
+    exec_properties = {
+        "test.EstimatedMemory": "12GB",
+        "test.workload-isolation-type": "firecracker",
+    },
+    parents = [":executor"],
+)

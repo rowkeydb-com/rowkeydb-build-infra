@@ -12,6 +12,8 @@ It holds:
 - `MODULE.bazel`: the Bazel module `rowkeydb_build_infra`, which declares
   the approved versions of the four shared modules as "nodep"
   dependencies.
+- `buildbuddy/`: the platforms BuildBuddy runs the consumers' actions on,
+  which the shared options select.
 - `bazelrc/shared.bazelrc`: the shared build options. A consumer keeps a
   checked copy and imports it.
 - `registry/`: a Bazel registry for patched versions of the shared
