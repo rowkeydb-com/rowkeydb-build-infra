@@ -56,6 +56,21 @@
 #         approved image reference, and every image reference in the
 #         consumer's text files, tracked or not ignored, Markdown apart, is
 #         the approved one.
+#       For a consumer on v0.9.0 or later, also:
+#       - the import of the copy is the first option line of .bazelrc;
+#       - every later option line of .bazelrc, every override, patch and
+#         declaration of a shared module in MODULE.bazel, and every copts,
+#         conlyopts, cxxopts, features, defines and local_defines of a BUILD
+#         file, tracked or not ignored, is on the consumer's allowlist,
+#         allowlists/<module name>.tsv in this clone, which gives the
+#         reason for each entry; an entry nothing matches is reported, and
+#         is no failure, so that a consumer can drop a line before the
+#         allowlist does;
+#       - MODULE.bazel names each shared module it declares by the module's
+#         own repository name;
+#       - MODULE.bazel fetches bazel_clang_tidy once, from the remote and at
+#         the commit clang_tidy.bzl names at that commit, and sets nothing
+#         else.
 #
 # An image reference is what follows container-image=, docker:// or
 # ghcr.io/, up to white space, a quotation mark or a character that closes
@@ -206,25 +221,39 @@ check_self() {
 # MODULE.bazel.lock, with the MODULE.bazel of this repository at the
 # commit, whose nodep dependencies (repo_name = None) are the shared
 # modules at their approved versions, as every release has declared them.
+# For a consumer on v0.9.0 or later it also reads .bazelrc and the BUILD
+# files and compares them and MODULE.bazel with the consumer's allowlist.
 # Fails once for each line the comparison prints, and writes the
 # URLs, strip prefix and integrity of the override of rowkeydb_build_infra,
 # one to a line, to $TMP_DIR/override.
 check_modules() {
     local dir="$1" commit="$2" out line
-    local lock="$dir/MODULE.bazel.lock"
+    local lock="$dir/MODULE.bazel.lock" builds="$TMP_DIR/build_files"
     [ -f "$lock" ] || fail "MODULE.bazel.lock is missing"
+    if ! git -C "$dir" ls-files -z --cached --others --exclude-standard \
+        -- ':(glob)**/BUILD' ':(glob)**/BUILD.bazel' \
+        > "$builds" 2> "$TMP_DIR/errors"; then
+        fail "git cannot list the BUILD files of $dir: $(head -n 1 "$TMP_DIR/errors")"
+    fi
+    # clang_tidy.bzl is absent before v0.9.0, which does not read it.
     if ! out="$(python3 -I - "$dir/MODULE.bazel" "$lock" \
         <(git -C "$INFRA_DIR" show "$commit:MODULE.bazel") "$commit" \
-        "$TMP_DIR/override" <<'EOF'
+        "$TMP_DIR/override" "$dir" "$INFRA_DIR/allowlists" "$builds" \
+        <(git -C "$INFRA_DIR" show "$commit:clang_tidy.bzl" 2> /dev/null) <<'EOF'
 import ast
 import json
 import os
 import re
 import sys
 
-module_path, lock_path, infra_path, commit, override_path = sys.argv[1:]
+(module_path, lock_path, infra_path, commit, override_path, consumer_dir,
+ allowlists, builds, clang_tidy_path) = sys.argv[1:]
 FUNCTIONS = re.compile(r"^(module|bazel_dep|include|[a-z_]*_override)$")
 OVERRIDE_KEYS = ["integrity", "module_name", "strip_prefix", "urls"]
+IMPORT = "import %workspace%/bazel/build_infra/shared.bazelrc"
+BUILD_ATTRIBUTES = {"copts", "conlyopts", "cxxopts", "features", "defines",
+                    "local_defines"}
+KINDS = ("bazelrc", "module", "build")
 
 
 def calls(path, label):
@@ -344,6 +373,140 @@ def main():
                   f"{' '.join(found) or 'from no registry'}; "
                   f"{commit} approves {approved}")
 
+    if at_least(own, (0, 9, 0)):
+        own_lines(consumer, shared)
+
+
+def at_least(versions, minimum):
+    """Whether the one version given is the minimum or later. A version
+    which cannot be read is taken as later, so that the newer checks
+    apply."""
+    if len(versions) != 1 or not re.fullmatch(r"\d+(\.\d+)*",
+                                              str(versions[0])):
+        return True
+    return tuple(int(n) for n in versions[0].split(".")) >= minimum
+
+
+def literal_calls(path, name):
+    """The keyword arguments of each call in a module file which passes
+    name = <name>; a value which is not a literal is read as None."""
+    found = []
+    for node in ast.walk(ast.parse(open(path).read(), path)):
+        if not isinstance(node, ast.Call):
+            continue
+        kwargs = {}
+        for keyword in node.keywords:
+            try:
+                kwargs[keyword.arg] = ast.literal_eval(keyword.value)
+            except (ValueError, TypeError, SyntaxError):
+                kwargs[keyword.arg] = None
+        if kwargs.get("name") == name:
+            found.append(kwargs)
+    return found
+
+
+def own_lines(consumer, shared):
+    """The checks of a consumer on v0.9.0 or later."""
+    for kind, kw in consumer:
+        name = kw.get("name")
+        if (kind == "bazel_dep" and name in shared
+                and kw.get("repo_name", name) not in (None, name)):
+            print(f"MODULE.bazel names {name} {kw['repo_name']}; a shared "
+                  f"module is named by its own repository name, {name}")
+
+    approved = dict(re.findall(
+        r'^BAZEL_CLANG_TIDY_(REMOTE|COMMIT) = "([^"]+)"$',
+        open(clang_tidy_path).read(), re.M))
+    fetches = literal_calls(module_path, "bazel_clang_tidy")
+    if sorted(approved) != ["COMMIT", "REMOTE"]:
+        print(f"clang_tidy.bzl at {commit} names no remote and commit")
+    elif fetches != [{"name": "bazel_clang_tidy",
+                      "remote": approved["REMOTE"],
+                      "commit": approved["COMMIT"]}]:
+        print(f"MODULE.bazel does not fetch bazel_clang_tidy once, from "
+              f"{approved['REMOTE']} at {approved['COMMIT']}, setting "
+              "nothing else")
+
+    items = []
+    try:
+        rc = open(os.path.join(consumer_dir, ".bazelrc")).read()
+    except OSError as e:
+        print(f".bazelrc cannot be read: {e}")
+        rc = ""
+    options = [line.strip() for line in rc.splitlines()
+               if line.strip() and not line.strip().startswith("#")]
+    if options[:1] == [IMPORT]:
+        options = options[1:]
+    else:
+        print(f".bazelrc's first option line is not {IMPORT}")
+        options = [line for line in options if line != IMPORT]
+    items += [("bazelrc", line) for line in options]
+
+    for kind, kw in consumer:
+        if kind == "bazel_dep" and kw.get("name") in shared:
+            items.append(("module", f"bazel_dep {kw['name']}"))
+        name = kw.get("module_name")
+        if (not kind.endswith("_override")
+                or name in shared or name == "rowkeydb_build_infra"):
+            continue
+        items.append(("module", f"{kind} {name}"))
+        for key in ("patches", "patch_cmds"):
+            patches = kw.get(key) or []
+            for patch in patches if isinstance(patches, list) else [patches]:
+                items.append(("module", f"patch {name} {patch}"))
+
+    for path in open(builds, "rb").read().decode().split("\0"):
+        if not path:
+            continue
+        try:
+            tree = ast.parse(open(os.path.join(consumer_dir, path)).read(),
+                             path)
+        except (OSError, SyntaxError, ValueError) as e:
+            print(f"{path} cannot be read as Starlark: {e}")
+            continue
+        for node in ast.walk(tree):
+            for keyword in getattr(node, "keywords", []):
+                if keyword.arg is None:
+                    print(f"{path} line {node.lineno}: a call passes ** "
+                          "arguments, which this check cannot read")
+                elif keyword.arg in BUILD_ATTRIBUTES:
+                    items.append(("build", f"{path}: {keyword.arg} = "
+                                           f"{ast.unparse(keyword.value)}"))
+
+    names = [kw.get("name") for kind, kw in consumer if kind == "module"]
+    if (len(names) != 1 or not isinstance(names[0], str)
+            or not re.fullmatch(r"[a-z][a-z0-9._-]*", names[0])):
+        print("MODULE.bazel names no module, so its allowlist is unknown")
+        return
+    label = f"allowlists/{names[0]}.tsv"
+    entries = {}
+    try:
+        lines = open(os.path.join(allowlists, f"{names[0]}.tsv")).read()
+    except OSError:
+        print(f"{label} is missing")
+        lines = ""
+    for number, line in enumerate(lines.splitlines(), 1):
+        if not line.strip() or line.startswith("#"):
+            continue
+        fields = line.split("\t")
+        if (len(fields) != 3 or fields[0] not in KINDS
+                or not fields[1].strip() or not fields[2].strip()):
+            print(f"{label} line {number}: not a kind ({', '.join(KINDS)}), "
+                  "a line and a reason, separated by tabs")
+            continue
+        key = (fields[0], fields[1])
+        if key in entries:
+            print(f"{label} line {number} repeats line {entries[key]}")
+        entries.setdefault(key, number)
+    items = list(dict.fromkeys(items))
+    for kind, text in items:
+        if (kind, text) not in entries:
+            print(f"{label} does not allow this {kind} line: {text}")
+    for (kind, text), number in entries.items():
+        if (kind, text) not in items:
+            print(f"note: {label} line {number} matches nothing: {text}",
+                  file=sys.stderr)
+
 
 main()
 EOF
@@ -447,9 +610,10 @@ check_consumer() {
         fail "commit $commit is not in $INFRA_DIR"
         return
     fi
+    # The later checks still run, so that a candidate commit, which no tag
+    # points at yet, can be checked before its release.
     if [ -z "$(git -C "$INFRA_DIR" tag --points-at "$commit")" ]; then
         fail "commit $commit is not the commit of a release (no tag points at it)"
-        return
     fi
     at() { git -C "$INFRA_DIR" show "$commit:$1"; }
 

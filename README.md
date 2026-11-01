@@ -11,12 +11,21 @@ It holds:
   architecture's image. This is the authoritative copy of the digest.
 - `MODULE.bazel`: the Bazel module `rowkeydb_build_infra`, which declares
   the approved versions of the shared modules as "nodep" dependencies:
-  Abseil, protobuf, gRPC, the OpenTelemetry C++ SDK, googletest, zlib, RE2
-  and rules_cc.
+  Abseil, protobuf, gRPC, the OpenTelemetry C++ SDK, googletest, zlib, RE2,
+  BoringSSL, c-ares, Google Benchmark, protoc-gen-validate, googleapis and
+  its two C++ modules, and the rules the consumers' graphs hold (rules_cc,
+  bazel_lib, bazel_skylib, package_metadata, rules_proto, rules_python).
+- `clang_tidy.bzl`: the remote and commit of the clang-tidy aspect the
+  shared clang-tidy configuration runs.
 - `buildbuddy/`: the platforms BuildBuddy runs the consumers' actions on,
   which the shared options select.
 - `bazelrc/shared.bazelrc`: the shared build options. A consumer keeps a
-  checked copy and imports it.
+  checked copy and imports it as the first option line of its `.bazelrc`.
+- `allowlists/`: for each consumer, its own build lines, with the reason
+  for each: the option lines of its `.bazelrc` after the import, the
+  overrides, patches and shared-module declarations of its `MODULE.bazel`,
+  and the `copts`, `features` and `defines` of its BUILD files. A line is
+  added here before the consumer adds it, and removed after.
 - `registry/`: a Bazel registry for patched versions of the shared
   modules, empty until one is needed.
 - `recipe/Dockerfile`: the recipe of the image `image.bzl` names, with
@@ -39,7 +48,8 @@ It holds:
   versions of the tools installed outside Debian's packages, so that two
   images can be compared.
 - `scripts/check.sh`: checks that a consumer's copies, pins and declared
-  versions agree with a commit of this repository.
+  versions agree with a commit of this repository, and, from v0.9.0, that
+  its own build lines are on its allowlist.
 - `manifests/`: the checksums of the images' manifests, which are kept as
   release assets.
 - `evidence/`: the tools that compare a consumer's builds before and after

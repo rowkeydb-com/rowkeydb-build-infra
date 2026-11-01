@@ -1,0 +1,15 @@
+# rowkeyraft's own build lines, which scripts/check.sh allows for a consumer on
+# v0.9.0 or later: every option line of .bazelrc after the import of the
+# shared options, every override, patch and declaration of a shared module
+# in MODULE.bazel, and every copts, features and defines of a BUILD file.
+# Each entry is a kind (bazelrc, module or build), the line as check.sh
+# prints it, and the reason the consumer needs it, separated by tabs. A
+# line is added here before the consumer adds it, and removed after.
+bazelrc	build:clang-tidy-analyzer --config=clang	clang-tidy with the Clang Static Analyzer's path-sensitive checks, which the shared clang-tidy configuration does not run yet.
+bazelrc	build:clang-tidy-analyzer --aspects @bazel_clang_tidy//clang_tidy:clang_tidy.bzl%clang_tidy_aspect	clang-tidy with the Clang Static Analyzer's path-sensitive checks, which the shared clang-tidy configuration does not run yet.
+bazelrc	build:clang-tidy-analyzer --@bazel_clang_tidy//:clang_tidy_config=//:clang_tidy_analyzer_config	clang-tidy with the Clang Static Analyzer's path-sensitive checks, which the shared clang-tidy configuration does not run yet.
+bazelrc	build:clang-tidy-analyzer --output_groups=report	clang-tidy with the Clang Static Analyzer's path-sensitive checks, which the shared clang-tidy configuration does not run yet.
+bazelrc	build:model-checks --java_runtime_version=remotejdk_21	The specification's model checker is a jar, run under the Java runtime Bazel fetches; its classes are for Java 11 and the model-checks workflow uses 21.
+module	bazel_dep rules_cc	The BUILD file loads the C++ rules from rules_cc.
+module	bazel_dep abseil-cpp	The library uses Abseil's hash, status and strings.
+module	bazel_dep googletest	The tests; a development dependency.

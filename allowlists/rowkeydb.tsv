@@ -1,0 +1,40 @@
+# rowkeydb's own build lines, which scripts/check.sh allows for a consumer on
+# v0.9.0 or later: every option line of .bazelrc after the import of the
+# shared options, every override, patch and declaration of a shared module
+# in MODULE.bazel, and every copts, features and defines of a BUILD file.
+# Each entry is a kind (bazelrc, module or build), the line as check.sh
+# prints it, and the reason the consumer needs it, separated by tabs. A
+# line is added here before the consumer adds it, and removed after.
+bazelrc	build:linux --per_file_copt=external/rocksdb.*@-fexceptions	RocksDB throws in multi_scan, memtable, string_util, write_prepared_txn_db, backup_engine and options_helper; an exception reaching -fno-exceptions code terminates.
+bazelrc	build:linux --per_file_copt=external/jemalloc.*@-fexceptions	jemalloc's C++ operator new catches std::bad_alloc to honour the throwing and non-throwing new contract.
+bazelrc	build:linux --per_file_copt=external/rocksdb.*@-frtti	RocksDB's transaction code asserts with dynamic_cast wherever NDEBUG is undefined (the default and sanitizer builds).
+bazelrc	build --custom_malloc=@jemalloc//:jemalloc	jemalloc is the process-wide allocator of every rowkeydb binary and test, its own code's and every statically linked dependency's allocations.
+bazelrc	build --@jemalloc//settings/flags:malloc_conf=background_thread:true,metadata_thp:auto,abort_conf:true	jemalloc's run-time tuning baked into the binary, so that it needs no MALLOC_CONF in the deployment.
+bazelrc	build --@jemalloc//settings/flags:enable_prof=libgcc	jemalloc's heap profiler, dormant unless MALLOC_CONF turns it on, for on-demand heap profiles of the shipped binary.
+bazelrc	build:sanitizer --custom_malloc=@bazel_tools//tools/cpp:malloc	The sanitizers replace the allocator to instrument it, so no sanitizer build links jemalloc.
+bazelrc	build:asan-ubsan --per_file_copt=external/rocksdb.*@-fno-sanitize=alignment	RocksDB loads unaligned data on purpose.
+bazelrc	build --config=opentelemetry	rowkeydb exports its metrics through the OpenTelemetry C++ SDK, whose gauges need ABI version 2.
+bazelrc	build --@io_bazel_rules_go//go/config:pure	rowkeydb's Go tools build without cgo: statically linked, reproducible, and free of MSan reports from the Go runtime's signal handler.
+bazelrc	coverage --instrumentation_filter="^//[^/]*:.*$"	Coverage instruments only rowkeydb's own top-level packages.
+module	bazel_dep rules_cc	The C++ rules.
+module	bazel_dep abseil-cpp	rowkeydb's code uses Abseil throughout.
+module	bazel_dep protobuf	rowkeydb's API and storage use protobuf messages.
+module	bazel_dep boringssl	The server's SHA-256 from BoringSSL's crypto library (server/privacy.cc).
+module	bazel_dep grpc	The server is a gRPC service.
+module	bazel_dep re2	The regular-expression row filters.
+module	bazel_dep opentelemetry-cpp	Metrics, traces and logs through the OpenTelemetry C++ SDK.
+module	bazel_dep rules_python	The Python toolchain extension MODULE.bazel configures.
+module	bazel_dep googletest	The tests; a development dependency.
+module	bazel_dep google_benchmark	The benchmarks; a development dependency.
+module	bazel_dep googleapis	The Bigtable protos, which are rowkeydb's API.
+module	bazel_dep googleapis-cc	Enables googleapis' C++ proto rules for the Bigtable protos.
+module	bazel_dep googleapis-grpc-cc	Enables googleapis' C++ gRPC rules for the Bigtable services.
+module	git_override limen	Limen, the load-shedding library, is in no registry; pinned to its release commit.
+module	archive_override rocksdb	The registry has only RocksDB 9; rowkeydb builds 10.10.1 with Bazel support it adds by patch.
+module	patch rocksdb //bazel/rocksdb:add_bazel_support.patch	RocksDB's BUILD and MODULE files.
+module	patch rocksdb //bazel/rocksdb:fix_multi_scan_exceptions.patch	Lets code built without exceptions include RocksDB's multi_scan.h.
+module	patch rocksdb //bazel/rocksdb:add_wal_write_group_size_histogram.patch	Adds the WAL write-group size histogram rowkeydb's metrics read.
+module	archive_override jemalloc	The jemalloc 5.3.1 release's source, built with the community module's build files.
+module	patch jemalloc //bazel/jemalloc:add_bazel_support.patch	The community jemalloc module's build files, reconciled with 5.3.1.
+module	git_override zetasketch-cpp	zetasketch-cpp, the HLL++ implementation, is in no registry; pinned to its release commit.
+build	BUILD.bazel: local_defines = ['ROWKEYDB_VERSION=\\"$(rowkeydb_version)\\"']	The version string rowkeydb reports, from the build setting //:rowkeydb_version.
