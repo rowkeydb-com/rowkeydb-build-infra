@@ -52,11 +52,12 @@ build:linux --cxxopt=-Werror --host_cxxopt=-Werror
 # code paths.
 build:linux --cxxopt=-fno-exceptions --host_cxxopt=-fno-exceptions
 # Google C++ Style Guide: no run-time type information, in every
-# compilation, host tools included. The four shared modules compile without
-# it: each leaves out its uses of dynamic_cast and typeid when it is off. A
-# dependency which needs it gets -frtti back, for its own files only, from
-# the consumer which builds it, as RocksDB does from rowkeydb: its
-# transaction code asserts with dynamic_cast wherever NDEBUG is not defined.
+# compilation, host tools included. Abseil, protobuf, gRPC and the
+# OpenTelemetry C++ SDK compile without it: each leaves out its uses of
+# dynamic_cast and typeid when it is off. A dependency which needs it gets
+# -frtti back, for its own files only, from the consumer which builds it, as
+# RocksDB does from rowkeydb: its transaction code asserts with dynamic_cast
+# wherever NDEBUG is not defined.
 build:linux --cxxopt=-fno-rtti --host_cxxopt=-fno-rtti
 # Suppress GCC's -Wmissing-requires from protobuf headers (GCC 14 and
 # later, C++20 and later).
@@ -159,6 +160,11 @@ build:clang --cxxopt=-Werror=thread-safety
 build:sanitizer --copt=-O2
 build:sanitizer --copt=-mno-omit-leaf-frame-pointer
 build:sanitizer --copt=-fno-optimize-sibling-calls
+# Stop at the first report of every sanitizer, rather than print it and carry
+# on, as most of UndefinedBehaviorSanitizer's checks otherwise do. It is set
+# for every compilation of every sanitizer configuration, third-party code
+# included, so that the consumers compile their dependencies alike.
+build:sanitizer --copt=-fno-sanitize-recover=all
 # Sanitizers make tests slower: ASan by about two to three times, TSan by
 # five to twenty. The timeouts for each test size are therefore twice the
 # defaults, the eternal one apart, so that a large test is not stopped at

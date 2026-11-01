@@ -44,9 +44,9 @@
 #         files under that prefix;
 #       - MODULE.bazel, read as Starlark, passes every argument of module,
 #         bazel_dep, include and the overrides as a literal, declares none
-#         of the four shared modules at another version, overrides none,
-#         and includes no other file; MODULE.bazel.lock selects from the
-#         registry, at the approved version, each of the four that
+#         of the shared modules at another version, overrides none, and
+#         includes no other file; MODULE.bazel.lock selects from the
+#         registry, at the approved version, each of them that
 #         MODULE.bazel declares or the consumer's graph contains; and no
 #         text file, Markdown and the copy apart, holds an option that
 #         replaces a module or its registry or turns modules off
@@ -82,7 +82,6 @@ INFRA_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly INFRA_DIR
 readonly COPY_PATH="bazel/build_infra/shared.bazelrc"
 readonly REFERENCES_PATH="bazel/build_infra/image_references"
-readonly SHARED_MODULES=(abseil-cpp protobuf grpc opentelemetry-cpp)
 readonly RELEASES_URL="https://github.com/rowkeydb-com/rowkeydb-build-infra/releases/download"
 # Options that replace a module or its registry outside MODULE.bazel, or
 # turn modules off.
@@ -205,7 +204,9 @@ check_self() {
 
 # Reads the consumer's MODULE.bazel as Starlark and compares it, and its
 # MODULE.bazel.lock, with the MODULE.bazel of this repository at the
-# commit. Fails once for each line the comparison prints, and writes the
+# commit, whose nodep dependencies (repo_name = None) are the shared
+# modules at their approved versions, as every release has declared them.
+# Fails once for each line the comparison prints, and writes the
 # URLs, strip prefix and integrity of the override of rowkeydb_build_infra,
 # one to a line, to $TMP_DIR/override.
 check_modules() {
@@ -214,15 +215,14 @@ check_modules() {
     [ -f "$lock" ] || fail "MODULE.bazel.lock is missing"
     if ! out="$(python3 -I - "$dir/MODULE.bazel" "$lock" \
         <(git -C "$INFRA_DIR" show "$commit:MODULE.bazel") "$commit" \
-        "$TMP_DIR/override" "${SHARED_MODULES[@]}" <<'EOF'
+        "$TMP_DIR/override" <<'EOF'
 import ast
 import json
 import os
 import re
 import sys
 
-module_path, lock_path, infra_path, commit, override_path = sys.argv[1:6]
-shared = sys.argv[6:]
+module_path, lock_path, infra_path, commit, override_path = sys.argv[1:]
 FUNCTIONS = re.compile(r"^(module|bazel_dep|include|[a-z_]*_override)$")
 OVERRIDE_KEYS = ["integrity", "module_name", "strip_prefix", "urls"]
 
@@ -306,6 +306,11 @@ def main():
         except (OSError, ValueError, KeyError, TypeError) as e:
             print(f"MODULE.bazel.lock cannot be read: {e!r}")
 
+    shared = sorted({kw.get("name") for kind, kw in infra
+                     if kind == "bazel_dep" and "repo_name" in kw
+                     and kw["repo_name"] is None})
+    if not shared:
+        print(f"rowkeydb-build-infra at {commit} declares no shared module")
     for name in shared:
         approved = [kw.get("version") for kind, kw in infra
                     if kind == "bazel_dep" and kw.get("name") == name]

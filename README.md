@@ -10,8 +10,9 @@ It holds:
 - `image.bzl`: the image every build runs in, named by the digest of each
   architecture's image. This is the authoritative copy of the digest.
 - `MODULE.bazel`: the Bazel module `rowkeydb_build_infra`, which declares
-  the approved versions of the four shared modules as "nodep"
-  dependencies.
+  the approved versions of the shared modules as "nodep" dependencies:
+  Abseil, protobuf, gRPC, the OpenTelemetry C++ SDK, googletest, zlib, RE2
+  and rules_cc.
 - `buildbuddy/`: the platforms BuildBuddy runs the consumers' actions on,
   which the shared options select.
 - `bazelrc/shared.bazelrc`: the shared build options. A consumer keeps a

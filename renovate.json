@@ -1,6 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "description": "Proposes new upstream versions of the four shared modules in MODULE.bazel and of the tools the recipe downloads. A proposal is taken by hand: the checksum beside a tool's version is set from the new download, and the image is rebuilt and shown reproducible, as RowKeyDB's design/shared_build_architecture.md requires.",
+  "description": "Proposes new upstream versions of the shared modules in MODULE.bazel and of the tools the recipe downloads. A proposal is taken by hand: the checksum beside a tool's version is set from the new download, and the image is rebuilt and shown reproducible, as RowKeyDB's design/shared_build_architecture.md requires.",
   "extends": ["config:recommended"],
   "dependencyDashboard": true,
   "prConcurrentLimit": 4,

@@ -1,9 +1,9 @@
 # The registry
 
 A static Bazel registry, empty until some consumer needs a version it
-holds. It is for patched versions of the four shared modules (gRPC,
-Protobuf, Abseil and the OpenTelemetry C++ SDK), and later for this
-repository's own module; nothing else.
+holds. It is for patched versions of the shared modules, those whose
+versions MODULE.bazel approves, and later for this repository's own
+module; nothing else.
 
 A patched version is named `<upstream version>.rowkey.<n>`, for example
 `1.81.1.rowkey.1`, which sorts above the upstream version. A hyphen, as in
