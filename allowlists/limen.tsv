@@ -1,0 +1,12 @@
+# limen's own build lines, which scripts/check.sh allows for a consumer on
+# v0.9.0 or later: every option line of .bazelrc after the import of the
+# shared options, every override, patch and declaration of a shared module
+# in MODULE.bazel, and every copts, features and defines of a BUILD file.
+# Each entry is a kind (bazelrc, module or build), the line as check.sh
+# prints it, and the reason the consumer needs it, separated by tabs. A
+# line is added here before the consumer adds it, and removed after.
+bazelrc	build --config=opentelemetry	The OpenTelemetry C++ SDK's ABI version 2, which the shared group sets, so that the SDK compiles as in rowkeydb, Limen's consumer, and its compilations are shared.
+module	bazel_dep rules_cc	The BUILD file loads the C++ rules from rules_cc.
+module	bazel_dep abseil-cpp	The library's status, synchronization, strings and time types.
+module	bazel_dep opentelemetry-cpp	The library's metrics, through the OpenTelemetry API and metrics SDK.
+module	bazel_dep googletest	The tests; a development dependency.
