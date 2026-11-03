@@ -12,5 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# The root package, so that consumers can load image.bzl.
-exports_files(["image.bzl"])
+# The root package, so that consumers can load image.bzl. MODULE.bazel is
+# the file through which the Gazelle test, in bazel/gazelle, finds the
+# repository.
+exports_files([
+    "MODULE.bazel",
+    "image.bzl",
+])

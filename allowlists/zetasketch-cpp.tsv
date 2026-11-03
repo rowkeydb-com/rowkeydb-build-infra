@@ -15,5 +15,7 @@ bazelrc	test:buildbuddy --remote_download_regex=.*/testlogs/tests/differential_f
 module	bazel_dep rules_cc	The BUILD files load the C++ rules from rules_cc.
 module	bazel_dep protobuf	The library serializes sketches to the ZetaSketch protos.
 module	bazel_dep googletest	The tests; a development dependency.
+module	bazel_dep rules_go	The Go rules, with which Gazelle is built for the Gazelle check; a development dependency.
+module	bazel_dep gazelle	Gazelle, whose check finds no Go code and so no BUILD file to write; a development dependency.
 build	BUILD.bazel: copts = ['-std=c++23']	The library is C++23, also when built by a consumer without the shared options.
 build	src/farmhash/BUILD.bazel: copts = ['-Wno-error']	FarmHash is vendored third-party code, kept as published; its warnings are not errors.

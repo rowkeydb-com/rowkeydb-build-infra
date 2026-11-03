@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Checks this repository's own copies on every change.
+# Checks this repository's own copies, and with Gazelle its BUILD files, on
+# every change.
 name: Check
 
 on:
@@ -45,3 +46,24 @@ jobs:
         run: ruff check --no-cache evidence/
       - name: Check the references to the image
         run: scripts/check.sh --self
+
+  gazelle:
+    runs-on: ubuntu-24.04
+    env:
+      IMAGE: ghcr.io/rowkeydb-com/rowkeydb-build-infra@sha256:c811e74114ebedf787178468c9a796e4e37ae7e55f2d2fdc63501ea940c04515
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          # No later step needs the token.
+          persist-credentials: false
+      - name: Check the BUILD files with Gazelle
+        # Bazel runs in the image, as the runner's user, as the consumers'
+        # scripts run it. Gazelle is built with the shared options, which
+        # this repository's .bazelrc imports, so the step also shows that
+        # rules_go accepts the shared Go options.
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" \
+            -e HOME=/tmp -e USER=rowkeydb-build-infra \
+            -v "$GITHUB_WORKSPACE:/workspace" -w /workspace \
+            "$IMAGE" bazel test //bazel/gazelle:gazelle_test

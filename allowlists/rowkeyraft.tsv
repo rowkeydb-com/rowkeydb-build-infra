@@ -13,3 +13,5 @@ bazelrc	build:model-checks --java_runtime_version=remotejdk_21	The specification
 module	bazel_dep rules_cc	The BUILD file loads the C++ rules from rules_cc.
 module	bazel_dep abseil-cpp	The library uses Abseil's hash, status and strings.
 module	bazel_dep googletest	The tests; a development dependency.
+module	bazel_dep rules_go	The Go rules, for the simulation orchestrator and the Gazelle check; a development dependency.
+module	bazel_dep gazelle	Gazelle, which writes and checks the BUILD files of the Go code; a development dependency.

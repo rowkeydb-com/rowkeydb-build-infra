@@ -15,6 +15,13 @@ It holds:
   BoringSSL, c-ares, Google Benchmark, protoc-gen-validate, googleapis and
   its two C++ modules, and the rules the consumers' graphs hold (rules_cc,
   bazel_lib, bazel_skylib, package_metadata, rules_proto, rules_python).
+  It also declares the Go rules and Gazelle, which are shared modules as
+  well, and the Go SDK every consumer builds its Go with.
+- `gazelle/defs.bzl`: the Gazelle targets every consumer defines in
+  `bazel/gazelle`, the one which writes the BUILD files of its Go code and
+  the test which fails when they differ from what Gazelle would write.
+  This repository defines them too, and its check workflow runs the test,
+  with the shared options, which its `.bazelrc` imports.
 - `clang_tidy.bzl`: the remote and commit of the clang-tidy aspect the
   shared clang-tidy configuration runs.
 - `buildbuddy/`: the platforms BuildBuddy runs the consumers' actions on,
@@ -48,8 +55,9 @@ It holds:
   versions of the tools installed outside Debian's packages, so that two
   images can be compared.
 - `scripts/check.sh`: checks that a consumer's copies, pins and declared
-  versions agree with a commit of this repository, and, from v0.9.0, that
-  its own build lines are on its allowlist.
+  versions agree with a commit of this repository, from v0.9.0 that its
+  own build lines are on its allowlist, and from v0.10.0 that its Go SDK
+  and the Go release of its go.mod and go.work files are the approved ones.
 - `manifests/`: the checksums of the images' manifests, which are kept as
   release assets.
 - `evidence/`: the tools that compare a consumer's builds before and after

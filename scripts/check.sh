@@ -71,6 +71,17 @@
 #       - MODULE.bazel fetches bazel_clang_tidy once, from the remote and at
 #         the commit clang_tidy.bzl names at that commit, and sets nothing
 #         else.
+#       For a consumer on v0.10.0 or later, also:
+#       - MODULE.bazel downloads the Go SDK which this repository's
+#         MODULE.bazel downloads at that commit, with go_sdk.download
+#         setting the version and at most a name, and calls go_sdk for
+#         nothing else but nogo;
+#       - every go line of a go.mod or go.work file, tracked or not
+#         ignored, names that SDK's Go release, such as 1.27 or 1.27.3 for
+#         the SDK 1.27.3.
+#       From v0.10.0, rules_go and gazelle, which this repository declares
+#       under their own names, are shared modules too, which a consumer may
+#       name as it likes.
 #
 # An image reference is what follows container-image=, docker:// or
 # ghcr.io/, up to white space, a quotation mark or a character that closes
@@ -229,17 +240,27 @@ check_self() {
 check_modules() {
     local dir="$1" commit="$2" out line
     local lock="$dir/MODULE.bazel.lock" builds="$TMP_DIR/build_files"
+    local go_files="$TMP_DIR/go_files"
     [ -f "$lock" ] || fail "MODULE.bazel.lock is missing"
     if ! git -C "$dir" ls-files -z --cached --others --exclude-standard \
         -- ':(glob)**/BUILD' ':(glob)**/BUILD.bazel' \
         > "$builds" 2> "$TMP_DIR/errors"; then
         fail "git cannot list the BUILD files of $dir: $(head -n 1 "$TMP_DIR/errors")"
     fi
+    if ! git -C "$dir" ls-files -z --cached --others --exclude-standard \
+        -- ':(glob)**/go.mod' ':(glob)**/go.work' \
+        > "$go_files" 2> "$TMP_DIR/errors"; then
+        fail "git cannot list the go.mod and go.work files of $dir: $(head -n 1 "$TMP_DIR/errors")"
+    fi
+    # The Python reads this repository's MODULE.bazel more than once, so it
+    # is a file, not a pipe.
+    git -C "$INFRA_DIR" show "$commit:MODULE.bazel" > "$TMP_DIR/infra_module"
     # clang_tidy.bzl is absent before v0.9.0, which does not read it.
     if ! out="$(python3 -I - "$dir/MODULE.bazel" "$lock" \
-        <(git -C "$INFRA_DIR" show "$commit:MODULE.bazel") "$commit" \
+        "$TMP_DIR/infra_module" "$commit" \
         "$TMP_DIR/override" "$dir" "$INFRA_DIR/allowlists" "$builds" \
-        <(git -C "$INFRA_DIR" show "$commit:clang_tidy.bzl" 2> /dev/null) <<'EOF'
+        <(git -C "$INFRA_DIR" show "$commit:clang_tidy.bzl" 2> /dev/null) \
+        "$go_files" <<'EOF'
 import ast
 import json
 import os
@@ -247,8 +268,13 @@ import re
 import sys
 
 (module_path, lock_path, infra_path, commit, override_path, consumer_dir,
- allowlists, builds, clang_tidy_path) = sys.argv[1:]
+ allowlists, builds, clang_tidy_path, go_files) = sys.argv[1:]
 FUNCTIONS = re.compile(r"^(module|bazel_dep|include|[a-z_]*_override)$")
+# The modules this repository declares under their own names, because its
+# files load from them, and which are shared modules all the same: a
+# consumer must take them at the approved versions, but may name them as
+# it likes.
+NAMED_SHARED = {"rules_go", "gazelle"}
 OVERRIDE_KEYS = ["integrity", "module_name", "strip_prefix", "urls"]
 IMPORT = "import %workspace%/bazel/build_infra/shared.bazelrc"
 BUILD_ATTRIBUTES = {"copts", "conlyopts", "cxxopts", "features", "defines",
@@ -336,8 +362,9 @@ def main():
             print(f"MODULE.bazel.lock cannot be read: {e!r}")
 
     shared = sorted({kw.get("name") for kind, kw in infra
-                     if kind == "bazel_dep" and "repo_name" in kw
-                     and kw["repo_name"] is None})
+                     if kind == "bazel_dep"
+                     and (kw.get("name") in NAMED_SHARED
+                          or ("repo_name" in kw and kw["repo_name"] is None))})
     if not shared:
         print(f"rowkeydb-build-infra at {commit} declares no shared module")
     for name in shared:
@@ -375,6 +402,8 @@ def main():
 
     if at_least(own, (0, 9, 0)):
         own_lines(consumer, shared)
+    if at_least(own, (0, 10, 0)):
+        go_versions()
 
 
 def at_least(versions, minimum):
@@ -410,6 +439,7 @@ def own_lines(consumer, shared):
     for kind, kw in consumer:
         name = kw.get("name")
         if (kind == "bazel_dep" and name in shared
+                and name not in NAMED_SHARED
                 and kw.get("repo_name", name) not in (None, name)):
             print(f"MODULE.bazel names {name} {kw['repo_name']}; a shared "
                   f"module is named by its own repository name, {name}")
@@ -506,6 +536,89 @@ def own_lines(consumer, shared):
         if (kind, text) not in items:
             print(f"note: {label} line {number} matches nothing: {text}",
                   file=sys.stderr)
+
+
+def go_sdk_calls(path):
+    """Each call on rules_go's go_sdk module extension in a module file,
+    whatever the extension's variable is named, as (method, keyword
+    arguments, whether a positional argument is passed). A value which is
+    not a literal is read as None."""
+    tree = ast.parse(open(path).read(), path)
+    proxies = set()
+    for node in ast.walk(tree):
+        value = getattr(node, "value", None)
+        if not (isinstance(node, ast.Assign) and isinstance(value, ast.Call)
+                and isinstance(value.func, ast.Name)
+                and value.func.id == "use_extension"):
+            continue
+        args = value.args[:2]
+        if (len(args) == 2
+                and all(isinstance(a, ast.Constant) for a in args)
+                and str(args[0].value).endswith("//go:extensions.bzl")
+                and args[1].value == "go_sdk"):
+            proxies.update(t.id for t in node.targets
+                           if isinstance(t, ast.Name))
+    found = []
+    for node in ast.walk(tree):
+        if (isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and isinstance(node.func.value, ast.Name)
+                and node.func.value.id in proxies):
+            kwargs = {}
+            for keyword in node.keywords:
+                try:
+                    kwargs[keyword.arg] = ast.literal_eval(keyword.value)
+                except (ValueError, TypeError, SyntaxError):
+                    kwargs[keyword.arg] = None
+            found.append((node.func.attr, kwargs, bool(node.args)))
+    return found
+
+
+def go_versions():
+    """The Go checks of a consumer on v0.10.0 or later: its Go SDK, and the
+    go lines of its go.mod and go.work files."""
+    try:
+        approved = [kw.get("version")
+                    for method, kw, _ in go_sdk_calls(infra_path)
+                    if method == "download"]
+        calls = go_sdk_calls(module_path)
+    except (OSError, SyntaxError, ValueError) as e:
+        print(f"a MODULE.bazel cannot be read as Starlark: {e}")
+        return
+    if len(approved) != 1 or not isinstance(approved[0], str):
+        print(f"rowkeydb-build-infra at {commit} downloads no single Go SDK")
+        return
+    approved = approved[0]
+    downloads = 0
+    for method, kw, positional in calls:
+        if method == "download":
+            downloads += 1
+            if (positional or kw.get("version") != approved
+                    or not set(kw) <= {"name", "version"}):
+                print(f"MODULE.bazel's go_sdk.download sets {kw}; it must "
+                      f"set version = {approved!r} and at most a name")
+        elif method != "nogo":
+            print(f"MODULE.bazel calls go_sdk.{method}; a consumer takes its "
+                  "Go SDK with go_sdk.download alone")
+    if not downloads:
+        print(f"MODULE.bazel downloads no Go SDK; {commit} approves "
+              f"{approved}")
+
+    release = ".".join(approved.split(".")[:2])
+    for path in open(go_files, "rb").read().decode().split("\0"):
+        if not path:
+            continue
+        try:
+            text = open(os.path.join(consumer_dir, path)).read()
+        except OSError as e:
+            print(f"{path} cannot be read: {e}")
+            continue
+        for number, line in enumerate(text.splitlines(), 1):
+            m = re.fullmatch(r"\s*go\s+(\S+)\s*(//.*)?", line)
+            if m and not re.fullmatch(re.escape(release) + r"(\.\d+)?",
+                                      m.group(1)):
+                print(f"{path} line {number}: go {m.group(1)}; the Go SDK "
+                      f"{approved} is Go {release}")
 
 
 main()

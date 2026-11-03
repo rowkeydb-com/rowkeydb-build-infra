@@ -10,3 +10,5 @@ module	bazel_dep rules_cc	The BUILD file loads the C++ rules from rules_cc.
 module	bazel_dep abseil-cpp	The library's status, synchronization, strings and time types.
 module	bazel_dep opentelemetry-cpp	The library's metrics, through the OpenTelemetry API and metrics SDK.
 module	bazel_dep googletest	The tests; a development dependency.
+module	bazel_dep rules_go	The Go rules, with which Gazelle is built for the Gazelle check; a development dependency.
+module	bazel_dep gazelle	Gazelle, whose check finds no Go code and so no BUILD file to write; a development dependency.

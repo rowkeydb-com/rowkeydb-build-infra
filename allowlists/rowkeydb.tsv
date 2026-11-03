@@ -14,7 +14,6 @@ bazelrc	build --@jemalloc//settings/flags:enable_prof=libgcc	jemalloc's heap pro
 bazelrc	build:sanitizer --custom_malloc=@bazel_tools//tools/cpp:malloc	The sanitizers replace the allocator to instrument it, so no sanitizer build links jemalloc.
 bazelrc	build:asan-ubsan --per_file_copt=external/rocksdb.*@-fno-sanitize=alignment	RocksDB loads unaligned data on purpose.
 bazelrc	build --config=opentelemetry	rowkeydb exports its metrics through the OpenTelemetry C++ SDK, whose gauges need ABI version 2.
-bazelrc	build --@io_bazel_rules_go//go/config:pure	rowkeydb's Go tools build without cgo: statically linked, reproducible, and free of MSan reports from the Go runtime's signal handler.
 bazelrc	coverage --instrumentation_filter="^//[^/]*:.*$"	Coverage instruments only rowkeydb's own top-level packages.
 module	bazel_dep rules_cc	The C++ rules.
 module	bazel_dep abseil-cpp	rowkeydb's code uses Abseil throughout.
@@ -29,6 +28,8 @@ module	bazel_dep google_benchmark	The benchmarks; a development dependency.
 module	bazel_dep googleapis	The Bigtable protos, which are rowkeydb's API.
 module	bazel_dep googleapis-cc	Enables googleapis' C++ proto rules for the Bigtable protos.
 module	bazel_dep googleapis-grpc-cc	Enables googleapis' C++ gRPC rules for the Bigtable services.
+module	bazel_dep rules_go	The Go rules: rowkeydb's Go tools, Lambdas and benchmarks, and the Gazelle check.
+module	bazel_dep gazelle	Gazelle, which writes and checks the BUILD files of the Go code, and fetches the Go modules go.work names.
 module	git_override limen	Limen, the load-shedding library, is in no registry; pinned to its release commit.
 module	archive_override rocksdb	The registry has only RocksDB 9; rowkeydb builds 10.10.1 with Bazel support it adds by patch.
 module	patch rocksdb //bazel/rocksdb:add_bazel_support.patch	RocksDB's BUILD and MODULE files.
