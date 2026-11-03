@@ -22,6 +22,14 @@ It holds:
   the test which fails when they differ from what Gazelle would write.
   This repository defines them too, and its check workflow runs the test,
   with the shared options, which its `.bazelrc` imports.
+- `go/`: the nogo target, which consumers with Go register and which
+  replaces go vet and golangci-lint: the analyzers golangci-lint 2.15.0
+  runs by default for govet, staticcheck, errcheck, ineffassign and
+  unused, at the versions of its go.mod, which `go/go.mod` repeats.
+  `go/analyzers.bzl` lists them. `go/unused` reports what staticcheck's
+  unused-code check finds, and `go/inline` gives go vet's inline analyzer
+  the file reader nogo leaves unset. This repository's own Go is checked
+  with it too.
 - `clang_tidy.bzl`: the remote and commit of the clang-tidy aspect the
   shared clang-tidy configuration runs.
 - `buildbuddy/`: the platforms BuildBuddy runs the consumers' actions on,

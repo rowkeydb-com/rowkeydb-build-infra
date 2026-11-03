@@ -42,6 +42,24 @@ bazel_dep(name = "gazelle", version = "0.54.0")
 go_sdk = use_extension("@rules_go//go:extensions.bzl", "go_sdk")
 go_sdk.download(version = "1.27.3")
 
+# This repository's own Go is checked with the nogo it defines for the
+# consumers. rules_go reads this only when this module is the root.
+go_sdk.nogo(nogo = "//go:nogo")
+
+# The Go modules of the analyzers in go/, at the versions of golangci-lint
+# 2.15.0's go.mod, which go/go.mod repeats. go_deps selects one version of
+# each Go module across the whole module graph, so in a consumer these are
+# lower bounds on its own Go modules.
+go_deps = use_extension("@gazelle//:extensions.bzl", "go_deps")
+go_deps.from_file(go_mod = "//go:go.mod")
+use_repo(
+    go_deps,
+    "co_honnef_go_tools",
+    "com_github_gordonklaus_ineffassign",
+    "com_github_kisielk_errcheck",
+    "org_golang_x_tools",
+)
+
 # The approved versions of the shared modules: the large dependencies, the
 # smaller ones the consumers compile with them, the rules their graphs
 # hold, and rules_cc, whose C++ toolchain configuration forms every compile

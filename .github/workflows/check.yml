@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Checks this repository's own copies, and with Gazelle its BUILD files, on
+# Checks this repository's own copies, its Go code and its BUILD files on
 # every change.
 name: Check
 
@@ -47,7 +47,7 @@ jobs:
       - name: Check the references to the image
         run: scripts/check.sh --self
 
-  gazelle:
+  go:
     runs-on: ubuntu-24.04
     env:
       IMAGE: ghcr.io/rowkeydb-com/rowkeydb-build-infra@sha256:c811e74114ebedf787178468c9a796e4e37ae7e55f2d2fdc63501ea940c04515
@@ -57,13 +57,30 @@ jobs:
         with:
           # No later step needs the token.
           persist-credentials: false
-      - name: Check the BUILD files with Gazelle
-        # Bazel runs in the image, as the runner's user, as the consumers'
-        # scripts run it. Gazelle is built with the shared options, which
-        # this repository's .bazelrc imports, so the step also shows that
-        # rules_go accepts the shared Go options.
+      # Each step runs in the image, as the runner's user, as the consumers'
+      # scripts run it. The Bazel steps keep Bazel's output and caches in
+      # one directory of the runner, so the second reuses the first's work.
+      - name: Make the directory of Bazel's output
+        run: mkdir -p "$RUNNER_TEMP/cache"
+      - name: Check the formatting of the Go code
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp \
+            -v "$GITHUB_WORKSPACE:/workspace" -w /workspace \
+            "$IMAGE" bash -c 'unformatted="$(gofmt -l go)"; [ -z "$unformatted" ] || { echo "gofmt would change: $unformatted"; exit 1; }'
+      - name: Build nogo and check the Go code with it
+        # Builds every target, nogo among them, and so checks this
+        # repository's own Go with nogo, with the shared options, which
+        # this repository's .bazelrc imports.
         run: |
           docker run --rm --user "$(id -u):$(id -g)" \
             -e HOME=/tmp -e USER=rowkeydb-build-infra \
             -v "$GITHUB_WORKSPACE:/workspace" -w /workspace \
+            -v "$RUNNER_TEMP/cache:/tmp/.cache" \
+            "$IMAGE" bazel build //...
+      - name: Check the BUILD files with Gazelle
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" \
+            -e HOME=/tmp -e USER=rowkeydb-build-infra \
+            -v "$GITHUB_WORKSPACE:/workspace" -w /workspace \
+            -v "$RUNNER_TEMP/cache:/tmp/.cache" \
             "$IMAGE" bazel test //bazel/gazelle:gazelle_test
