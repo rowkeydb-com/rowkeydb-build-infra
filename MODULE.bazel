@@ -52,6 +52,20 @@ go_sdk.nogo(nogo = "//go:nogo")
 # lower bounds on its own Go modules.
 go_deps = use_extension("@gazelle//:extensions.bzl", "go_deps")
 go_deps.from_file(go_mod = "//go:go.mod")
+
+# Gazelle's Go modules take part in that selection as well, and rules_go
+# records the version of every module a binary links in the binary, so a
+# consumer whose own modules raise one of them links a Gazelle binary of
+# its own. rowkeydb's raise go-difflib, through testify; this raises it in
+# every consumer to the same version, so that all of them link one Gazelle
+# binary. It must follow rowkeydb when rowkeydb's version changes.
+go_deps.module(
+    indirect = True,
+    path = "github.com/pmezard/go-difflib",
+    sum = "h1:Jamvg5psRIccs7FGNTlIRMkT8wgtp5eCXdBlqhYGL6U=",
+    version = "v1.0.1-0.20181226105442-5d4384ee4fb2",
+)
+
 use_repo(
     go_deps,
     "co_honnef_go_tools",
