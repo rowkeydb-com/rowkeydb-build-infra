@@ -41,3 +41,4 @@ module	archive_override jemalloc	The jemalloc 5.3.1 release's source, built with
 module	patch jemalloc //bazel/jemalloc:add_bazel_support.patch	The community jemalloc module's build files, reconciled with 5.3.1.
 module	git_override zetasketch-cpp	zetasketch-cpp, the HLL++ implementation, is in no registry; pinned to its release commit.
 build	BUILD.bazel: local_defines = ['ROWKEYDB_VERSION=\\"$(rowkeydb_version)\\"']	The version string rowkeydb reports, from the build setting //:rowkeydb_version.
+build	server/BUILD.bazel: local_defines = ['OS_LINUX', 'ROCKSDB_PLATFORM_POSIX']	The power-loss test includes RocksDB's internal headers for its FaultInjectionTestEnv, which test these two macros (port/port.h); the RocksDB library defines them for its own sources only.
