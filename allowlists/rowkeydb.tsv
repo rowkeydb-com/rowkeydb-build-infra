@@ -37,6 +37,7 @@ module	patch rocksdb //bazel/rocksdb:fix_multi_scan_exceptions.patch	Lets code b
 module	patch rocksdb //bazel/rocksdb:add_wal_write_group_size_histogram.patch	Adds the WAL write-group size histogram rowkeydb's metrics read.
 module	patch rocksdb //bazel/rocksdb:fix_log_reader_recyclable_record_loop.patch	The log reader's part of the unmerged upstream fix, meta/rocksdb#15485: a recyclable record type no longer makes the reader loop for ever.
 module	patch rocksdb //bazel/rocksdb:report_recyclable_record_before_length.patch	Reports a recyclable record type in a log that is not recycled before its length is trusted, so that such a type never silently ends the log.
+module	patch rocksdb //bazel/rocksdb:end_log_at_first_damaged_record.patch	Stops the recovery of the logs and the manifest at a log's first damaged record; a record torn by a power loss ends the log without failing the durable mode's startup.
 module	archive_override jemalloc	The jemalloc 5.3.1 release's source, built with the community module's build files.
 module	patch jemalloc //bazel/jemalloc:add_bazel_support.patch	The community jemalloc module's build files, reconciled with 5.3.1.
 module	git_override zetasketch-cpp	zetasketch-cpp, the HLL++ implementation, is in no registry; pinned to its release commit.
