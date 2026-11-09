@@ -43,3 +43,4 @@ module	patch jemalloc //bazel/jemalloc:add_bazel_support.patch	The community jem
 module	git_override zetasketch-cpp	zetasketch-cpp, the HLL++ implementation, is in no registry; pinned to its release commit.
 build	BUILD.bazel: local_defines = ['ROWKEYDB_VERSION=\\"$(rowkeydb_version)\\"']	The version string rowkeydb reports, from the build setting //:rowkeydb_version.
 build	server/BUILD.bazel: local_defines = ['OS_LINUX', 'ROCKSDB_PLATFORM_POSIX']	The power-loss test includes RocksDB's internal headers for its FaultInjectionTestEnv, which test these two macros (port/port.h); the RocksDB library defines them for its own sources only.
+build	rocksdb_backend/BUILD.bazel: local_defines = ['OS_LINUX', 'ROCKSDB_PLATFORM_POSIX']	The shared database's test fails each file operation of --initialize through RocksDB's FaultInjectionTestFS, whose internal headers test these two macros (port/port.h); the RocksDB library defines them for its own sources only.
