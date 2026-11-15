@@ -15,10 +15,14 @@ repository's releases and compressed with zstd, as `manifest-*.txt.zst`.
 manifest is named by the first eight hexadecimal digits of the digest of
 the linux/amd64 image it describes.
 
-- `manifest-c811e741.txt` describes the image `image.bzl` names,
+- `manifest-a544f120.txt` describes the image `image.bzl` names,
+  `sha256:a544f120db73d9634592e4b9e02e8c853333dbd22f59d376f31af515eecb8758`,
+  which `scripts/build-image.sh` builds from `recipe/Dockerfile` at
+  b1432a3, for the release `v0.11.0`.
+- `manifest-c811e741.txt` describes the image of `v0.5.0` to `v0.10.0`,
   `sha256:c811e74114ebedf787178468c9a796e4e37ae7e55f2d2fdc63501ea940c04515`,
   which `scripts/build-image.sh` builds from `recipe/Dockerfile` at
-  e68c7b2, for the release `v0.5.0`.
+  e68c7b2.
 - `manifest-c5d4150a.txt` describes the image of `v0.4.0` and `v0.4.1`,
   `sha256:c5d4150af77c2091b3c30f52f9d5eb2c97d18ab6fde286e60785821c7e67bf60`,
   which `scripts/build-image.sh` builds from `recipe/Dockerfile` at
@@ -144,3 +148,13 @@ The configuration, the Debian packages, the extended attributes and every
 other file are the same. It was built once, on the owner's machine, by
 the owner's decision of 2026-10-28, where earlier images were built twice
 on different machines.
+
+The manifest of the image `a544f120` differs from that of `c811e741` in
+lld alone: the Debian package `lld-19`, at the version of `clang-19`
+and `libllvm19`, from the same apt.llvm.org build, with its files under
+`/usr/lib/llvm-19/bin`, its links in `/usr/bin`, its documentation and
+dpkg's records of it; the link `/usr/bin/ld.lld` to `ld.lld-19`, which
+the recipe makes; and dpkg's `status` and `status-old`, which list the
+new package. The configuration, the extended attributes, the tool
+versions and every other file are the same. It was built once, on a
+GitHub-hosted runner, by the owner's decision of 2026-11-15.
