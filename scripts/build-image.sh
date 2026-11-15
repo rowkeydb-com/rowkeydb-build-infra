@@ -22,9 +22,9 @@
 #
 # With IMAGE_LOAD=<tag>, the image is also loaded into the local Docker
 # under that tag, for scripts/manifest.sh. With IMAGE_INPUTS=<URL>, the
-# recipe reads its release inputs from that URL instead, to test it before
-# the inputs release exists; the build argument then enters the image's
-# history, so its digest is not the published recipe's.
+# recipe reads all its release inputs from that URL instead, to test it
+# before an inputs release exists; the build arguments then enter the
+# image's history, so its digest is not the published recipe's.
 #
 # It prints the image's digest. The builder is buildx at a fixed release,
 # checked against its SHA-256, and a new BuildKit container started from an
@@ -126,7 +126,7 @@ if [ -n "${IMAGE_LOAD:-}" ]; then
 fi
 extra=()
 if [ -n "${IMAGE_INPUTS:-}" ]; then
-    extra+=(--build-arg "INPUTS=$IMAGE_INPUTS")
+    extra+=(--build-arg "INPUTS=$IMAGE_INPUTS" --build-arg "LLVM_INPUTS=$IMAGE_INPUTS")
 fi
 docker buildx build --builder "$builder" \
     --platform linux/amd64 \

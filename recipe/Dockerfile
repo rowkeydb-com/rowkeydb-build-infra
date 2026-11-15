@@ -19,8 +19,9 @@
 # design/shared_build_architecture.md lists for the rebuild and for the
 # later changes: the MSan libraries built from the compiler's own LLVM
 # release, gcov and cpp from the same GCC as gcc and g++, and the Go the
-# consumers' Bazel builds use. Build it only with scripts/build-image.sh,
-# which pins the builder and its settings.
+# consumers' Bazel builds use; and, from release v0.11.0, the linker lld,
+# from the same apt.llvm.org build as clang. Build it only with
+# scripts/build-image.sh, which pins the builder and its settings.
 
 # The versions of the compilers and of the tools the recipe downloads,
 # each download beside its SHA-256, and the JDK's exact package versions.
@@ -164,9 +165,12 @@ RUN --mount=type=bind,source=recipe/files/java-cacerts,target=/tmp/java-cacerts 
         /var/lib/dbus/machine-id \
     && : > /etc/machine-id
 
-# This repository's release that holds the inputs no other place is sure
-# to keep.
+# This repository's releases that hold the inputs no other place is sure
+# to keep: the Maven repository below, and the apt.llvm.org packages, which
+# moved to a later release when lld joined them, since a published
+# release takes no new file.
 ARG INPUTS=https://github.com/rowkeydb-com/rowkeydb-build-infra/releases/download/image-inputs-20261001
+ARG LLVM_INPUTS=https://github.com/rowkeydb-com/rowkeydb-build-infra/releases/download/image-inputs-20261115
 
 # The Maven repository java-bigtable-hbase 2.18.3 built for the HBase
 # conformance tests, taken from the adopted image with its files' contents
@@ -181,20 +185,24 @@ RUN curl -fsSL -o /tmp/maven_cache.tar.zst "${INPUTS}/maven_cache.tar.zst" \
     && rm /tmp/maven_cache.tar.zst
 
 # clang 19, and clang-tidy and clang-format 21: the builds of apt.llvm.org
-# the adopted image holds. apt.llvm.org keeps only its latest build of a
-# version, so the packages are kept with their checksums in the release
-# above; their Ubuntu dependencies come from the snapshot. apt marks the
+# the adopted image holds; and lld 19, from clang 19's build. apt.llvm.org
+# keeps only its latest build of a version, so the packages are kept with
+# their checksums in the release LLVM_INPUTS names; their Ubuntu
+# dependencies come from the snapshot. apt marks the
 # packages it installs from files as asked for; marked as dependencies
 # afterwards, they would be recorded after the others, in an order
 # different from the adopted image's. So every package is installed as a
-# dependency, and the seven the adopted recipe asked for are then marked
-# as asked for.
+# dependency, and the seven the adopted recipe asked for, with lld, are
+# then marked as asked for. lld's package names its linker in /usr/bin
+# only with its version; GCC looks for the linker -fuse-ld=lld names as
+# ld.lld on its search path, so the name without the version is linked
+# to it, as clang's is.
 ARG CLANG_VERSION
 ARG CLANG_TOOLS_VERSION
 RUN --mount=type=bind,source=recipe/llvm-debs.sha256,target=/tmp/llvm-debs.sha256 \
     mkdir /tmp/llvm-debs \
     && cd /tmp/llvm-debs \
-    && awk '{print $2}' /tmp/llvm-debs.sha256 | while read -r f; do curl -fsSL -o "$f" "${INPUTS}/$f"; done \
+    && awk '{print $2}' /tmp/llvm-debs.sha256 | while read -r f; do curl -fsSL -o "$f" "${LLVM_INPUTS}/$f"; done \
     && sha256sum -c /tmp/llvm-debs.sha256 \
     && apt-get update \
     && env -u SOURCE_DATE_EPOCH apt-get -o APT::Get::Always-Include-Phased-Updates=true \
@@ -203,13 +211,15 @@ RUN --mount=type=bind,source=recipe/llvm-debs.sha256,target=/tmp/llvm-debs.sha25
         "clang-format-${CLANG_TOOLS_VERSION}" "clang-${CLANG_VERSION}" \
         "libclang-${CLANG_VERSION}-dev" "llvm-${CLANG_VERSION}-dev" \
         "libc++-${CLANG_VERSION}-dev" "libc++abi-${CLANG_VERSION}-dev" \
+        "lld-${CLANG_VERSION}" \
     && cd / \
     && rm -rf /var/lib/apt/lists/* /tmp/llvm-debs /var/log/apt/* \
         /var/log/dpkg.log /var/log/alternatives.log /var/cache/ldconfig/aux-cache \
     && ln -sf "/usr/bin/clang-tidy-${CLANG_TOOLS_VERSION}" /usr/bin/clang-tidy \
     && ln -sf "/usr/bin/clang-format-${CLANG_TOOLS_VERSION}" /usr/bin/clang-format \
     && ln -sf "/usr/bin/clang-${CLANG_VERSION}" /usr/bin/clang \
-    && ln -sf "/usr/bin/clang++-${CLANG_VERSION}" /usr/bin/clang++
+    && ln -sf "/usr/bin/clang++-${CLANG_VERSION}" /usr/bin/clang++ \
+    && ln -sf "/usr/bin/ld.lld-${CLANG_VERSION}" /usr/bin/ld.lld
 
 ARG BAZELISK_VERSION
 ARG BAZELISK_SHA256

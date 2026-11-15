@@ -45,9 +45,10 @@ It holds:
   modules, empty until one is needed.
 - `recipe/Dockerfile`: the recipe of the image `image.bzl` names, with
   every input pinned, so that two builds give the same image. The inputs
-  no other place is sure to keep, apt.llvm.org's packages and the Maven
-  repository of the HBase tests, are the assets of the release
-  `image-inputs-20261001`, which holds no commit's archive.
+  no other place is sure to keep are the assets of releases which hold no
+  commit's archive: the Maven repository of the HBase tests, of
+  `image-inputs-20261001`; apt.llvm.org's packages, lld among them, of
+  `image-inputs-20261115`.
   `recipe/llvm-debs.sha256` and `recipe/requirements.txt` hold the
   checksums of the packages, and `recipe/files/` the files the recipe
   copies in.
