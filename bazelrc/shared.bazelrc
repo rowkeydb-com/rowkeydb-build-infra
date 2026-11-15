@@ -83,12 +83,14 @@ build:linux --per_file_copt=external/.*@-w
 build:linux --host_per_file_copt=external/.*@-w
 # Host tools (protoc, grpc_cpp_plugin) also need C++23.
 build:linux --host_cxxopt=-std=c++23
-# Every link is made by lld, the host tools' included. Bazel's generated
-# toolchain passes a -fuse-ld option of its own, which names lld when the
-# image holds lld and gold otherwise; this option comes after it on every
+# Every C++ link is made by lld, the host tools' included. Bazel's
+# generated toolchain passes a -fuse-ld option of its own, which names lld
+# when the image in which Bazel first configured it, once for each output
+# base, held lld, and gold otherwise. This option comes after it on every
 # link command line, and GCC and clang both take the last -fuse-ld they
-# are given, so a change of image cannot change the linker unnoticed.
-# --config=lto names gold instead.
+# are given, so neither a change of image nor an output base made in an
+# earlier image can change the linker unnoticed. --config=lto names gold
+# instead. Go's links are made by Go's own linker and name none.
 build:linux --linkopt=-fuse-ld=lld --host_linkopt=-fuse-ld=lld
 
 # The options of all code, a consumer's own and its dependencies' alike,
@@ -332,6 +334,11 @@ build --experimental_disk_cache_gc_max_size=50G
 # them.
 build --remote_default_exec_properties=container-image=docker://ghcr.io/rowkeydb-com/rowkeydb-build-infra@sha256:a544f120db73d9634592e4b9e02e8c853333dbd22f59d376f31af515eecb8758
 
+# When an output the build still needs has left the remote cache or the
+# disk cache, run the action that made it again, instead of starting the
+# whole build again.
+build --rewind_lost_inputs
+
 # BuildBuddy Remote Build Execution Configuration. The key is in no file of
 # a consumer: Bazel asks the consumer's credential helper for it, which
 # reads BUILDBUDDY_API_KEY or ~/.config/buildbuddy/api-key. The consumer's
@@ -350,11 +357,12 @@ build:buildbuddy --remote_timeout=3600
 # only relays BuildBuddy's traffic would otherwise download every top-level
 # output, test binaries included, which no step reads. A job that reads a
 # built file on its own machine asks for that file on its own command line.
-# The coverage report is asked for below.
+# The coverage report is asked for below. The option is BuildBuddy's alone:
+# in deciding what to download, Bazel counts the disk cache as a remote
+# cache, so for every command it would also leave out the outputs of a
+# build the disk cache serves, which a script that builds on its own
+# machine and reads the result does not ask for.
 build:buildbuddy --remote_download_minimal
-# When an output the build still needs has left the remote cache, run the
-# action that made it again, instead of failing the build.
-build:buildbuddy --rewind_lost_inputs
 build:buildbuddy --jobs=100
 build:buildbuddy --remote_cache_compression
 build:buildbuddy --experimental_remote_cache_compression_threshold=100

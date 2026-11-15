@@ -30,11 +30,12 @@
 # Ubuntu snapshot and recipe/llvm-debs.sha256 fix. The other pins are the
 # base image, on the FROM line below; Bazel's version, in .bazelversion;
 # the apt.llvm.org packages, whose major versions CLANG_VERSION and
-# CLANG_TOOLS_VERSION must name, in recipe/llvm-debs.sha256 and the inputs
-# release, with their repository's lists in recipe/files; the Python
-# tools, in recipe/requirements.txt; the Maven repository's checksum, at
-# its step; and the Java trust store, recipe/files/java-cacerts, which must
-# hold the certificates of the snapshot's ca-certificates.
+# CLANG_TOOLS_VERSION must name, in recipe/llvm-debs.sha256 and the
+# release LLVM_INPUTS names, with their repository's lists in
+# recipe/files; the Python tools, in recipe/requirements.txt; the Maven
+# repository's checksum, at its step; and the Java trust store,
+# recipe/files/java-cacerts, which must hold the certificates of the
+# snapshot's ca-certificates.
 # scripts/build-image.sh takes SOURCE_DATE_EPOCH from UBUNTU_SNAPSHOT.
 # trivy reads TRIVY_VERSION as its --version switch, which ignores a value
 # that is not true or false; the recipe runs trivy only with --version.
@@ -166,9 +167,10 @@ RUN --mount=type=bind,source=recipe/files/java-cacerts,target=/tmp/java-cacerts 
     && : > /etc/machine-id
 
 # This repository's releases that hold the inputs no other place is sure
-# to keep: the Maven repository below, and the apt.llvm.org packages, which
-# moved to a later release when lld joined them, since a published
-# release takes no new file.
+# to keep: the Maven repository below, and the apt.llvm.org packages. A
+# published release takes no new file, so when lld joined the packages
+# they were copied, with it, into a later release, from which the recipe
+# takes them.
 ARG INPUTS=https://github.com/rowkeydb-com/rowkeydb-build-infra/releases/download/image-inputs-20261001
 ARG LLVM_INPUTS=https://github.com/rowkeydb-com/rowkeydb-build-infra/releases/download/image-inputs-20261115
 
